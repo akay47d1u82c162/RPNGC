@@ -1,0 +1,68 @@
+:root{
+  --ink:#0b1220; --muted:#6b7280; --line:#dce3ee;
+  --brand:#0f3b6d; --brand2:#0a2a4d; --accent:#0f766e;
+  --bg:#f6f9fc; --card:#fff;
+}
+
+/* Grid cards */
+.cards{display:grid; gap:16px; margin-bottom:16px}
+.cards-3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.cards-4{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.cards.compact .card{padding:14px}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:16px 18px;
+  box-shadow:0 4px 18px rgba(2,20,48,.06);
+}
+.card h3{margin:0 0 8px; font-size:18px; color:#11253f}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.bullets{margin:0; padding-left:18px}
+.bullets li{margin:6px 0}
+
+/* Buttons */
+.btn{
+  display:inline-block; border:1px solid #cfd8e6; border-radius:10px;
+  padding:8px 12px; text-decoration:none; color:#0f2a52; background:#f4f7fb;
+}
+.btn:hover{background:#e9f0f8}
+.btn.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(.95)}
+.btn.sm{padding:6px 10px; font-size:13px}
+.rowgap{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+
+/* Accordion */
+.accordion{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 6px 20px rgba(2,20,48,.06);
+}
+.accordion-head{padding:12px 14px 0}
+.accordion-btn{
+  width:100%; text-align:left; border:none; background:linear-gradient(90deg,var(--brand),var(--brand2));
+  color:#fff; padding:12px 14px; border-radius:10px; font-weight:700; display:flex; align-items:center; gap:10px;
+}
+.accordion .badge{background:#08213f; color:#fff; padding:2px 8px; border-radius:999px; font-size:12px}
+.accordion .chev{margin-left:auto; transform:rotate(0); transition:.2s ease}
+.accordion[data-open="true"] .chev{transform:rotate(180deg)}
+.accordion .muted.small{padding:8px 14px 12px}
+
+.accordion-body{
+  overflow:hidden; transition:max-height .24s ease; max-height:0;
+  border-top:1px dashed var(--line); padding:0 12px 14px;
+}
+
+/* Form tweaks inside card */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0}
+.docform label{display:block; font-size:13px; color:#20324d}
+.docform select,.docform input[type=file]{
+  width:100%; padding:6px 8px; border:1px solid #cfd8e6; border-radius:8px; font-size:13px; background:#fff;
+}
+
+/* Responsive */
+@media (max-width:640px){
+  .cards-3,.cards-4{grid-template-columns:1fr}
+}

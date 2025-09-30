@@ -1,0 +1,217 @@
+{% extends "recruitment/base.html" %}
+{% load static %}
+
+{% block title %}RPNGC · Control Center{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'recruitment/css/staff_dashboard.css' %}">
+<script>
+  function showLoading(show) {
+    const overlay = document.getElementById("loading");
+    if (overlay) overlay.style.display = show ? "flex" : "none";
+  }
+  function loadAdmin(url, el){
+    if(!url) return false;
+    const frame = document.getElementById("adminFrame");
+    const placeholder = document.getElementById("placeholder");
+    document.querySelectorAll(".nav a.active").forEach(a => a.classList.remove("active"));
+    if (el) el.classList.add("active");
+    showLoading(true);
+    if (placeholder) placeholder.style.display = "none";
+    frame.style.display = "block";
+    frame.src = url;
+    return false;
+  }
+  window.addEventListener("DOMContentLoaded", function(){
+    const frame = document.getElementById("adminFrame");
+    if (frame) frame.addEventListener("load", function(){ showLoading(false); });
+  });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">
+        <img src="{% static 'recruitment/images/Logo.png' %}" alt="RPNGC">
+      </div>
+      <div>
+        <div class="title">RPNGC Control</div>
+        <div class="subtitle">Recruitment Administration</div>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="group">
+      <h4>Overview</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:index' %}', this)">
+          <span class="dot"></span> Admin Home <span class="hint">↗</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- APPLICATIONS -->
+    <div class="group">
+      <h4>Applications</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_application_changelist' %}', this)">
+          <span class="dot"></span> All Applications
+        </a>
+        
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_application_changelist' %}?status__exact=SHORTLISTED', this)">
+          <span class="dot"></span> Shortlisted
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_application_changelist' %}?status__exact=REJECTED', this)">
+          <span class="dot"></span> Rejected
+        </a>
+      </nav>
+    </div>
+
+    <!-- RECRUITMENT PROCESS -->
+    <div class="group">
+      <h4>Recruitment Process</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_recruitmentcycle_changelist' %}', this)">
+          <span class="dot"></span> Recruitment Cycles
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_applicationeligibility_changelist' %}', this)">
+          <span class="dot"></span> Eligibility Snapshots
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_screeningaction_changelist' %}', this)">
+          <span class="dot"></span> Screening Actions
+        </a>
+      </nav>
+    </div>
+
+    <!-- APPLICANTS -->
+    <div class="group">
+      <h4>Applicants</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_applicantprofile_changelist' %}', this)">
+          <span class="dot"></span> Profiles
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_document_changelist' %}', this)">
+          <span class="dot"></span> Documents
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_educationrecord_changelist' %}', this)">
+          <span class="dot"></span> Education
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_workhistory_changelist' %}', this)">
+          <span class="dot"></span> Work History
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_reference_changelist' %}', this)">
+          <span class="dot"></span> References
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_alternativecontact_changelist' %}', this)">
+          <span class="dot"></span> Alternative Contacts
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_parentguardian_changelist' %}', this)">
+          <span class="dot"></span> Parents & Guardians
+        </a>
+      </nav>
+    </div>
+
+    <!-- TESTING & ASSESSMENTS -->
+    <div class="group">
+      <h4>Testing & Assessments</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_test_changelist' %}', this)">
+          <span class="dot"></span> Tests
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_question_changelist' %}', this)">
+          <span class="dot"></span> Questions
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_choice_changelist' %}', this)">
+          <span class="dot"></span> Answer Choices
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_testattempt_changelist' %}', this)">
+          <span class="dot"></span> Attempts
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_attemptanswer_changelist' %}', this)">
+          <span class="dot"></span> Answers
+        </a>
+      </nav>
+    </div>
+
+    <!-- INTERVIEWS & SELECTION -->
+    <div class="group">
+      <h4>Interviews & Selection</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_interviewschedule_changelist' %}', this)">
+          <span class="dot"></span> Interview Schedules
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_interviewscore_changelist' %}', this)">
+          <span class="dot"></span> Interview Scores
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_finalselection_changelist' %}', this)">
+          <span class="dot"></span> Final Selection
+        </a>
+      </nav>
+    </div>
+
+    <!-- GEOGRAPHY -->
+    <div class="group">
+      <h4>Geography</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_province_changelist' %}', this)">
+          <span class="dot"></span> Provinces
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_district_changelist' %}', this)">
+          <span class="dot"></span> Districts
+        </a>
+      </nav>
+    </div>
+
+    <!-- SYSTEM -->
+    <div class="group">
+      <h4>System</h4>
+      <nav class="nav">
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_user_changelist' %}', this)">
+          <span class="dot"></span> Users
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_notification_changelist' %}', this)">
+          <span class="dot"></span> Notifications
+        </a>
+        <a href="#" onclick="return loadAdmin('{% url 'admin:recruitment_auditlog_changelist' %}', this)">
+          <span class="dot"></span> Audit Logs
+        </a>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Main Panel -->
+  <section class="main">
+    <div class="toolbar">
+      <div class="lhs">
+        <span class="badge">RPNGC</span>
+        <strong>Control Center</strong>
+        <span class="muted">— select a module on the left to begin</span>
+      </div>
+      <div class="rhs">
+        <a class="btn" href="{% url 'admin:index' %}" target="_blank" rel="noopener">
+          Open Admin in New Tab <span class="k">↗</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div id="placeholder" class="placeholder">
+        <div class="box">
+          <h2>Welcome to the Royal Papua New Guinea Constabulary Recruitment Admin</h2>
+          <p>Use the navigation to manage applications, cycles, testing, interviews, and final selection.</p>
+          <div class="tips">
+            <span class="gold">Tip: Approve / Shortlist / Reject from the Applications page</span>
+            <span>Audit log tracks staff actions</span>
+            <span>Eligibility snapshot updates live</span>
+          </div>
+        </div>
+      </div>
+      <iframe id="adminFrame" class="frame" src=""></iframe>
+      <div id="loading" class="loading"><div class="spinner"></div></div>
+    </div>
+  </section>
+</div>
+{% endblock %}

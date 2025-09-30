@@ -1,0 +1,391 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RPNGC Application Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'recruitment/css/application_form.css' %}">
+  <style>
+    :root{--ink:#0b1220;--muted:#6b7280;--line:#d1d5db;--brand:#0f3b6d;--panel:#0f3b6d;--chip:#e5effa;--bg:#f8fafc;--card:#ffffff}
+    html,body{background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
+    .wrap{max-width:1080px;margin:24px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 16px 12px}
+    .grid{display:grid;gap:12px}
+    .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .row{display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:center}
+    .muted{color:var(--muted)}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .brand .logo{width:44px;height:44px;border-radius:10px;background:var(--chip);display:grid;place-items:center}
+    .title{font-size:20px;margin:0}
+    .subtitle{font-size:13px;color:#1f2937}
+    .btn{display:inline-block;border:1px solid #cbd5e1;border-radius:10px;padding:8px 14px;text-decoration:none}
+    .btn.primary{background:#0f766e;color:#fff;border-color:#0f766e}
+    .btn.link{border-color:transparent}
+    .table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    .table th,.table td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+    .table th{background:var(--panel);color:#fff;font-weight:600}
+    .section-head{display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px}
+    .section-head h2{font-size:16px;margin:0}
+    .info{background:#eef6ff;border:1px solid #cfe3ff;padding:8px 10px;border-radius:8px}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field label{font-weight:600}
+    .inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{background:#eef2f7;border:1px solid #d8dee9;border-radius:999px;padding:2px 10px;font-size:12px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .req{color:#b91c1c;margin-left:4px}
+    .photo{display:flex;gap:12px;align-items:flex-end}
+    .messages{margin:10px 0}
+    .messages p{margin:.25rem 0;padding:.5rem .75rem;border-radius:8px;background:#f1f5f9}
+    .hr{height:1px;background:var(--line);margin:8px 0 2px}
+    .errorlist{margin:.25rem 0 .5rem;padding-left:18px;color:#b91c1c}
+    input[type="text"],input[type="date"],input[type="email"],select,textarea,input[type="file"]{
+      width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;background:#fff
+    }
+    textarea{min-height:96px}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">
+          <img src="{% static 'recruitment/images/logo.png' %}" alt="RPNGC" style="width:28px;height:28px;object-fit:contain">
+        </div>
+        <div>
+          <h1 class="title">The Royal Papua New Guinea Constabulary (RPNGC)</h1>
+          <div class="subtitle">Application Form — Regular Recruit</div>
+        </div>
+      </div>
+      <div class="inline">
+        <!-- NEW: Back to Dashboard button -->
+        <a class="btn" href="{% url 'recruitment:applicant_dashboard' %}">Back to Dashboard</a>
+        <a class="btn" href="{% url 'recruitment:logout' %}">Logout</a>
+      </div>
+    </header>
+
+    {% if messages %}
+      <div class="messages">
+        {% for m in messages %}<p>{{ m }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+
+      <!-- Applicant Information -->
+      <section class="card">
+        <div class="section-head">
+          <h2>Applicant Information</h2>
+          {% if active_cycle %}<span class="muted">{{ active_cycle.name }} • {{ active_cycle.intake_year }}</span>{% endif %}
+        </div>
+
+        <div class="grid g2">
+          <div class="field">
+            <label for="{{ profile_form.full_name.id_for_label }}">Full Name</label>
+            {{ profile_form.full_name }} {{ profile_form.full_name.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ profile_form.gender.id_for_label }}">Sex</label>
+            {{ profile_form.gender }} {{ profile_form.gender.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ profile_form.dob.id_for_label }}">Date of Birth</label>
+            {{ profile_form.dob }} {{ profile_form.dob.errors }}
+          </div>
+          <div class="field">
+            <label>Current Age</label>
+            <input type="text" value="{% if profile_form.instance and profile_form.instance.age %}{{ profile_form.instance.age }}{% endif %}" disabled>
+          </div>
+
+          <div class="field">
+            <label for="{{ profile_form.province_of_origin.id_for_label }}">Province of origin</label>
+            {{ profile_form.province_of_origin }} {{ profile_form.province_of_origin.errors }}
+          </div>
+          <div></div>
+
+          <div class="field">
+            <label for="{{ profile_form.province.id_for_label }}">Current Province of residence</label>
+            {{ profile_form.province }} {{ profile_form.province.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ profile_form.district.id_for_label }}">District</label>
+            {{ profile_form.district }} {{ profile_form.district.errors }}
+          </div>
+
+          <div class="field">
+            <label for="{{ profile_form.phone.id_for_label }}">Mobile Number</label>
+            {{ profile_form.phone }} {{ profile_form.phone.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ profile_form.email.id_for_label }}">Email address</label>
+            {{ profile_form.email }} {{ profile_form.email.errors }}
+          </div>
+
+          <div class="field">
+            <label for="{{ profile_form.nid_number.id_for_label }}">NID / Passport No.</label>
+            {{ profile_form.nid_number }} {{ profile_form.nid_number.errors }}
+          </div>
+
+          <div class="photo">
+            <div class="field" style="flex:1">
+              <label for="{{ profile_form.photo.id_for_label }}">Profile Photo</label>
+              {{ profile_form.photo }}
+              <div class="muted">Upload a clear passport-style photo (JPG/PNG).</div>
+              {{ profile_form.photo.errors }}
+            </div>
+            {% if profile_form.instance.photo %}
+              <figure style="margin:0">
+                <img src="{{ profile_form.instance.photo.url }}" alt="Current photo" style="width:92px;height:92px;object-fit:cover;border-radius:12px;border:1px solid var(--line)">
+                <figcaption class="muted" style="text-align:center;margin-top:6px">Current</figcaption>
+              </figure>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="grid g2">
+          <div class="field">
+            <label for="{{ application_form.from_bougainville.id_for_label }}">Are you from Bougainville?</label>
+            <div class="inline">
+              {{ application_form.from_bougainville }} {{ application_form.from_bougainville.errors }}
+            </div>
+          </div>
+          <div class="field">
+            <label for="{{ application_form.applied_unit.id_for_label }}">Applied Unit</label>
+            {{ application_form.applied_unit }} {{ application_form.applied_unit.errors }}
+          </div>
+        </div>
+      </section>
+
+
+      <!-- Alternative Contact -->
+      <section class="card">
+        <div class="section-head"><h2>Alternative Contact person</h2></div>
+        {{ alt_contact_formset.management_form }}
+        {% for f in alt_contact_formset %}
+          <div class="grid g2" style="margin-bottom:10px">
+            <div class="field">
+              <label>Name<span class="req">*</span></label>
+              {{ f.name }} {{ f.name.errors }}
+            </div>
+            <div class="field">
+              <label>Relationship</label>
+              {{ f.relationship }}
+            </div>
+            <div class="field">
+              <label>Mobile Number</label>
+              {{ f.phone }}
+            </div>
+            <div class="field">
+              <label>Address</label>
+              {{ f.address }}
+            </div>
+            {% if f.DELETE %}
+              <div class="inline"><label>Remove</label>{{ f.DELETE }}</div>
+            {% endif %}
+          </div>
+        {% empty %}
+          <div class="info">No alternative contact added yet. You can add one above.</div>
+        {% endfor %}
+      </section>
+
+      <!-- Education & Work History -->
+      <section class="card">
+        <div class="section-head"><h2>Education Background and Work History</h2></div>
+
+        <div class="grid g3">
+          <div class="field">
+            <label for="{{ profile_form.highest_education_level.id_for_label }}">Highest Education Level Obtained</label>
+            {{ profile_form.highest_education_level }} {{ profile_form.highest_education_level.errors }}
+          </div>
+        </div>
+
+        <h3 class="muted" style="margin:.5rem 0">Education Records</h3>
+        {{ education_formset.management_form }}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Level</th><th>School / Institution</th><th>Province</th>
+              <th>Start</th><th>End</th><th>Certificate</th><th>GPA</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for f in education_formset %}
+            <tr>
+              <td>{{ f.level }}</td>
+              <td>{{ f.institution }}</td>
+              <td>{{ f.province }}</td>
+              <td>{{ f.start_year }}</td>
+              <td>{{ f.end_year }}</td>
+              <td>{{ f.certificate_title }}</td>
+              <td>{{ f.gpa }}</td>
+            </tr>
+            {% if f.non_field_errors %}<tr><td colspan="7">{{ f.non_field_errors }}</td></tr>{% endif %}
+          {% empty %}
+            <tr><td colspan="7" class="muted">Add your education history above.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="hr"></div>
+
+        <h3 class="muted" style="margin:.5rem 0">Work History</h3>
+        {{ work_formset.management_form }}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Employer</th><th>Position</th><th>Start</th><th>End</th><th>Duties</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for f in work_formset %}
+            <tr>
+              <td>{{ f.employer }}</td>
+              <td>{{ f.position }}</td>
+              <td>{{ f.start_date }}</td>
+              <td>{{ f.end_date }}</td>
+              <td>{{ f.duties }}</td>
+            </tr>
+            {% if f.non_field_errors %}<tr><td colspan="5">{{ f.non_field_errors }}</td></tr>{% endif %}
+          {% empty %}
+            <tr><td colspan="5" class="muted">Add any previous work experience here.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Experience + Reservist + Reason -->
+      <section class="card">
+        <div class="section-head"><h2>Experience & Motivation</h2></div>
+
+        <div class="grid g3">
+          <div class="field">
+            <label for="{{ application_form.years_experience.id_for_label }}">Years of Work Experience</label>
+            {{ application_form.years_experience }} {{ application_form.years_experience.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.years_experience_other.id_for_label }}">Other (specify)</label>
+            {{ application_form.years_experience_other }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.reservist_2021_2022.id_for_label }}">Reservist recruited 2021–2022?</label>
+            {{ application_form.reservist_2021_2022 }}
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:10px">
+          <label for="{{ application_form.reason_for_applying.id_for_label }}">What is your reason for applying to join the RPNGC Regular Recruit Program?</label>
+          {{ application_form.reason_for_applying }} {{ application_form.reason_for_applying.errors }}
+        </div>
+      </section>
+
+      <!-- References -->
+      <section class="card">
+        <div class="section-head"><h2>Background Checks — References</h2></div>
+        {{ reference_formset.management_form }}
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Position Title</th><th>Phone Number</th><th>Email address</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for f in reference_formset %}
+            <tr>
+              <td>{{ f.name }}</td>
+              <td>{{ f.position_title }}</td>
+              <td>{{ f.phone_number }}</td>
+              <td>{{ f.email }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="muted">Add at least one referee who can be contacted.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Declaration -->
+      <section class="card">
+        <div class="section-head"><h2>Declaration</h2></div>
+
+        <div class="grid g2">
+          <div class="field">
+            <label for="{{ application_form.criminal_conviction.id_for_label }}">Do you have a criminal conviction?</label>
+            {{ application_form.criminal_conviction }} {{ application_form.criminal_conviction.errors }}
+          </div>
+        </div>
+
+        <div class="info" style="margin:10px 0">
+          I hereby declare the information I have provided is correct. I understand it is an offense to supply misleading
+          or false information and that the RPNGC reserves the right to reject or cancel my application. I agree that I am
+          happy to serve the RPNGC wherever I am posted.
+        </div>
+
+        <div class="grid g3">
+          <div class="inline">
+            {{ application_form.declaration_agreed }}
+            <label for="{{ application_form.declaration_agreed.id_for_label }}">I agree to the above declaration</label>
+          </div>
+          <div class="field">
+            <label for="{{ application_form.signature_name.id_for_label }}">Signature of applicant (type name)</label>
+            {{ application_form.signature_name }} {{ application_form.signature_name.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.signature_date.id_for_label }}">Date</label>
+            {{ application_form.signature_date }} {{ application_form.signature_date.errors }}
+          </div>
+        </div>
+      </section>
+
+      <!-- ACTIONS -->
+      <div class="actions">
+        <!-- NEW: Back to Dashboard button (bottom) -->
+        <a class="btn" href="{% url 'recruitment:applicant_dashboard' %}">Back to Dashboard</a>
+
+        <button class="btn" type="submit" name="intent" value="save">Save</button>
+        <button class="btn primary" type="submit" name="intent" value="submit"
+                onclick="return confirm('Submit your application now? You will not be able to edit certain details while screening is in progress.')">
+          Submit Application
+        </button>
+
+        <!-- (Optional) Per-type document uploader block that your view supplies via `document_rows` -->
+        {% if document_rows %}
+        <section class="box" style="width:100%">
+          <h3>Required Documents</h3>
+          <p class="muted">Upload all mandatory documents here. Your application cannot be submitted until all required files are provided.</p>
+          <table class="table">
+            <thead><tr><th>Document Type</th><th>File</th></tr></thead>
+            <tbody>
+              {% for row in document_rows %}
+                <tr>
+                  <td>{{ row.doc_type_label }}</td>
+                  <td>
+                    {{ row.form.doc_type }}
+                    {% if row.existing %}
+                      <div style="margin-bottom:6px">
+                        <small>Current file: <em>{{ row.existing.file.name|default:"(none)" }}</em></small>
+                      </div>
+                    {% endif %}
+                    {{ row.form.file }}
+                    {% if row.form.file.errors %}
+                      <div class="err">{{ row.form.file.errors }}</div>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+        {% endif %}
+      </div>
+    </form>
+  </main>
+</body>
+</html>

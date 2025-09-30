@@ -1,0 +1,161 @@
+{% extends "recruitment/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard · RPNGC{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'recruitment/css/base.css' %}">
+<style>
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .notif-bell{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none;color:inherit}
+  .notif-bell .badge{position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:999px;min-width:18px;height:18px;padding:0 6px;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .notif-panel{display:none;position:absolute;right:0;top:40px;width:360px;max-height:420px;overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.12);z-index:20}
+  .notif-item{padding:10px 12px;border-bottom:1px solid #f1f5f9}
+  .notif-item.unread{background:#fff7ed}
+  .notif-item h4{margin:0 0 4px;font-size:.95rem}
+  .notif-item p{margin:0;color:#555;font-size:.9rem}
+  .notif-item time{display:block;color:#777;font-size:.8rem;margin-top:4px}
+  .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:16px}
+  .timeline{list-style:none;margin:0;padding:0}
+  .timeline li{display:flex;gap:12px;border-bottom:1px solid #f1f5f9;padding:8px 0}
+  .timeline .time{color:#666;min-width:120px;font-size:.9rem}
+  .timeline .desc{flex:1}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <div class="topbar">
+    <h2>Welcome, {{ profile.full_name }}</h2>
+
+    <div style="position:relative">
+      <a class="notif-bell" id="notifBell" title="Notifications">
+        🔔
+        {% if unread_count and unread_count > 0 %}
+          <span class="badge" id="notifBadge">{{ unread_count }}</span>
+        {% endif %}
+      </a>
+
+      <<div class="notif-panel" id="notifPanel" aria-hidden="true">
+  {% if notices %}
+    {% for n in notices %}
+      <div class="notif-item {% if not n.read %}unread{% endif %}" data-id="{{ n.id }}">
+        <h4>{{ n.title }}</h4>
+        {% if n.body %}<p>{{ n.body }}</p>{% endif %}
+        <time>{{ n.created_at|date:"M d, Y H:i" }}</time>
+      </div>
+    {% endfor %}
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:8px 12px">
+      <button class="btn" id="markAllBtn" type="button">Mark all as read</button>
+      <a class="btn" href="{% url 'recruitment:notifications_list' %}">View all</a>
+    </div>
+  {% else %}
+    <div class="notif-empty">No notifications yet.</div>
+  {% endif %}
+</div>
+
+
+  {% if application %}
+    <div class="card">
+      <h3>Application Summary</h3>
+      <p><strong>Cycle:</strong> {{ application.cycle }}</p>
+      <p><strong>Status:</strong> {{ application.get_status_display|default:application.status }}</p>
+      <p><strong>Submitted:</strong> {% if application.submitted_at %}{{ application.submitted_at|date:"F j, Y" }}{% else %}Draft{% endif %}</p>
+      <p><a class="btn" href="{% url 'recruitment:application_status' %}">View full status</a></p>
+    </div>
+
+    <div class="card">
+      <h3>Recent Admin Actions</h3>
+      {% if actions %}
+        <ul class="timeline">
+          {% for a in actions %}
+            <li>
+              <div class="time">{{ a.created_at|date:"M d, Y H:i" }}</div>
+              <div class="desc">
+                <strong>{% firstof a.by_user.get_full_name a.by_user.username "Staff" %}</strong>
+                {% if a.action_name %}— {{ a.action_name }}{% endif %}
+                {% if a.reason %}<div class="muted">{{ a.reason }}</div>{% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No admin actions yet.</p>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="card">
+      <h3>No application yet</h3>
+      <p>Start your application now.</p>
+      <p><a class="btn primary" href="{% url 'recruitment:application_form' %}">Open application form</a></p>
+    </div>
+  {% endif %}
+
+</div>
+
+<script>
+  (function(){
+    const bell = document.getElementById('notifBell');
+    const panel = document.getElementById('notifPanel');
+    const badge = document.getElementById('notifBadge');
+    const markAllBtn = document.getElementById('markAllBtn');
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    function togglePanel(){
+      const open = panel.style.display === 'block';
+      panel.style.display = open ? 'none' : 'block';
+      panel.setAttribute('aria-hidden', open ? 'true' : 'false');
+      // Mark-all when opening (comment out if you prefer manual)
+      if (!open && markAllBtn) markAll();
+    }
+
+    async function markAll(){
+      try{
+        await fetch("{% url 'recruitment:mark_all_seen' %}", {
+          method: "POST",
+          headers: {"X-CSRFToken": csrftoken}
+        });
+        if (badge) badge.remove();
+        panel.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+      }catch(e){}
+    }
+
+    panel?.addEventListener('click', async (e)=>{
+      const item = e.target.closest('.notif-item');
+      if(!item) return;
+      const id = item.dataset.id;
+      if (!id) return;
+      try{
+        await fetch("{% url 'recruitment:notification_seen' 0 %}".replace('/0/', `/${id}/`), {
+          method: "POST",
+          headers: {"X-CSRFToken": csrftoken}
+        });
+        item.classList.remove('unread');
+        if (badge) {
+          const v = parseInt(badge.textContent.trim() || "0", 10);
+          if (v > 1) badge.textContent = String(v - 1);
+          else badge.remove();
+        }
+      }catch(e){}
+    });
+
+    bell?.addEventListener('click', togglePanel);
+
+    markAllBtn?.addEventListener('click', markAll);
+
+    document.addEventListener('click', (e)=>{
+      if(!panel) return;
+      if(panel.contains(e.target) || bell.contains(e.target)) return;
+      panel.style.display = 'none';
+      panel.setAttribute('aria-hidden', 'true');
+    });
+  })();
+</script>
+{% endblock %}

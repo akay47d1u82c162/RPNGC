@@ -1,0 +1,22 @@
+{% extends "recruitment/base.html" %}
+{% block title %}Welcome · RPNGC{% endblock %}
+{% block content %}
+  <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+    <article class="card">
+      <h3>Welcome to RPNGC Recruitment</h3>
+      
+      </div>
+    </article>
+
+    <article class="card">
+      <h3>Active Recruitment</h3>
+      <p class="muted">
+        {% if request.user.is_authenticated %}
+          View the <a href="{% url 'recruitment:application_status' %}">status of your application</a>.
+        {% else %}
+          Login to view current cycle and requirements.
+        {% endif %}
+      </p>
+    </article>
+  </div>
+{% endblock %}

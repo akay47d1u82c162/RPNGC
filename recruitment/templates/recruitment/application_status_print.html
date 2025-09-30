@@ -1,0 +1,76 @@
+{% extends "recruitment/base.html" %}
+
+{% block title %}Application Status · Print{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    .no-print { display: none !important; }
+    .container, .status-wrap { box-shadow: none !important; }
+  }
+  .status-wrap { max-width: 900px; margin: 24px auto; background: #fff; padding: 24px; }
+  .muted { color: #666; }
+  .details { list-style: none; padding-left: 0; }
+  .details li { margin: 6px 0; }
+  .timeline { list-style: none; padding-left: 0; }
+  .timeline li { margin: 8px 0; }
+  .notes { margin: 4px 0 0; }
+  h1, h2, h3 { margin: 0 0 8px; }
+  .actions { margin-top: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="status-wrap">
+  <h1>Application Status</h1>
+  <p class="muted">Generated: {{ generated_at|date:"F j, Y, g:i a" }}</p>
+
+  <h3>Applicant Details</h3>
+  <ul class="details">
+    <li><strong>Full Name:</strong> {{ profile.full_name }}</li>
+    <li><strong>Email:</strong> {% firstof email profile.user.email "—" %}</li>
+    <li><strong>Date of Birth:</strong> {{ profile.dob|date:"F j, Y" }}</li>
+    <li><strong>Gender:</strong> {{ profile.get_gender_display }}</li>
+    <li><strong>Highest Education:</strong> {{ profile.get_highest_education_level_display }}</li>
+    <li><strong>NID:</strong> {{ profile.nid_number|default:"—" }}</li>
+  </ul>
+
+  <h3>Application Info</h3>
+  <ul class="details">
+    <li><strong>Recruitment Cycle:</strong> {% firstof recruitment_cycle_label cycle.name cycle "—" %}</li>
+    <li><strong>Type Applied:</strong> {% firstof recruitment_type_label "—" %}</li>
+    <li><strong>Date Applied:</strong> {% if app.submitted_at %}{{ app.submitted_at|date:"F j, Y" }}{% else %}Draft (not submitted){% endif %}</li>
+    <li><strong>Current Status:</strong> {% firstof app.get_status_display "—" %}</li>
+  </ul>
+
+  <h3>Uploaded Documents</h3>
+  {% if documents %}
+    <ul class="details">
+      {% for doc in documents %}
+        <li>{{ doc.get_doc_type_display }} — {{ doc.file.name }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No documents uploaded.</p>
+  {% endif %}
+
+  <h3>Admin Actions Timeline</h3>
+  {% if actions %}
+    <ul class="timeline">
+      {% for act in actions %}
+        <li>
+          <div><strong>{% firstof act.by_user.get_full_name act.by_user.username "Staff" %}</strong> — {{ act.action }}</div>
+          <div class="muted">{{ act.created_at|date:"M d, Y H:i" }}</div>
+          {% if act.notes %}<div class="notes">{{ act.notes }}</div>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No recorded actions yet.</p>
+  {% endif %}
+
+  <div class="actions no-print">
+    <button class="btn" onclick="window.print()">Print</button>
+  </div>
+</div>
+{% endblock %}

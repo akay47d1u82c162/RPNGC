@@ -1,0 +1,134 @@
+:root{
+  --ink:#0b1220; --muted:#6b7280; --line:#d1d5db;
+  --brand:#0f3b6d; --brand2:#0a2a4d; --accent:#0f766e;
+  --bg:#f8fafc; --card:#ffffff;
+}
+
+/* Container */
+.landing {
+  display: grid;
+  gap: 16px;
+}
+
+/* Banner */
+.banner {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0,0,0,.12);
+}
+.banner img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  filter: brightness(.85) saturate(1.05);
+}
+.banner-text {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+.banner-text h2 {
+  margin: 0 0 2px 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: .3px;
+}
+.banner-text p {
+  margin: 0;
+  font-size: 13px;
+  opacity: .95;
+}
+
+/* Welcome block */
+.welcome {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+}
+.welcome h3 {
+  margin: 0 0 6px 0;
+  color: var(--brand);
+  font-size: 18px;
+}
+.welcome p { margin: 0 0 10px 0; color: var(--muted); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn {
+  display: inline-block; text-decoration: none;
+  padding: 8px 12px; border-radius: 10px;
+  border: 1px solid #cbd5e1; color: var(--brand);
+  background: #fff;
+}
+.btn:hover { background:#f1f5f9; }
+.btn.primary {
+  background: var(--accent); border-color: var(--accent); color:#fff;
+}
+.btn.primary:hover { filter: brightness(.95); }
+
+/* Mission & Vision */
+.mv {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+}
+.mv-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 140px auto;
+}
+.mv-card img {
+  width: 100%; height: 140px; object-fit: cover;
+}
+.mv-card h3 {
+  margin: 10px 12px 4px 12px;
+  color: var(--brand2);
+  font-size: 16px;
+}
+.mv-card p {
+  margin: 0 12px 12px 12px;
+  color: #374151;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* Core Values */
+.values { text-align: center; }
+.values h3 {
+  font-size: 18px;
+  margin: 6px 0 12px 0;
+  color: var(--brand);
+}
+.values-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.value-card {
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+.value-card img {
+  width: 42px; height: 42px; object-fit: contain; margin-bottom: 8px;
+}
+.value-card h4 {
+  font-size: 14px; margin: 4px 0; color: var(--brand2);
+}
+.value-card p {
+  margin: 0; font-size: 12px; color:#444; line-height: 1.45;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+  .banner img { height: 180px; }
+  .mv { grid-template-columns: 1fr; }
+}

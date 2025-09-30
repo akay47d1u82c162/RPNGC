@@ -1,0 +1,74 @@
+/* Horizontal grouped “cards” on admin index */
+.rpngc-groups {
+  display: grid;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.rpngc-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px 12px;
+}
+
+.rpngc-group > summary {
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  list-style: none;
+  outline: none;
+  padding: 6px 2px;
+}
+
+.rpngc-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.rpngc-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #f9fafb;
+}
+
+.rpngc-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rpngc-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.rpngc-card li {
+  margin: 4px 0;
+}
+
+.rpngc-card a {
+  text-decoration: none;
+}
+
+/* Optional: hide the left sidebar (if you want a clean canvas) */
+#nav-sidebar {
+  display: none !important;
+}
+
+/* Expand main content to full width when sidebar hidden */
+.dashboard #container,
+.app-index #container,
+#container {
+  max-width: 100%;
+}
+
+.dashboard #content,
+.app-index #content,
+#content {
+  margin-left: 0 !important;
+}

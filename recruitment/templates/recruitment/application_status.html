@@ -1,0 +1,93 @@
+{% extends "recruitment/base.html" %}
+{% load static %}
+
+{% block title %}Application Status · RPNGC{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'recruitment/css/application_status.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="status-page">
+  <h2>Application Status</h2>
+  <p class="muted">Last updated: {{ generated_at|date:"F j, Y, g:i a" }}</p>
+
+  <!-- Applicant Details -->
+  <div class="card">
+    <h3>Applicant Details</h3>
+    <ul class="details">
+      <li><strong>Full Name:</strong> {{ profile.full_name }}</li>
+      <li><strong>Email:</strong> {% firstof email profile.user.email "—" %}</li>
+      <li><strong>Date of Birth:</strong> {{ profile.dob|date:"F j, Y" }}</li>
+      <li><strong>Gender:</strong> {{ profile.get_gender_display }}</li>
+      <li><strong>Highest Education:</strong> {{ profile.get_highest_education_level_display }}</li>
+      <li><strong>NID:</strong> {{ profile.nid_number|default:"—" }}</li>
+    </ul>
+  </div>
+
+  <!-- Application Info -->
+  <div class="card">
+    <h3>Application Info</h3>
+    <ul class="details">
+      <li>
+        <strong>Recruitment Cycle:</strong>
+        {% firstof recruitment_cycle_label cycle.name cycle "—" %}
+      </li>
+      <li>
+        <strong>Type Applied:</strong>
+        {% firstof recruitment_type_label "—" %}
+      </li>
+      <li>
+        <strong>Date Applied:</strong>
+        {% if app.submitted_at %}{{ app.submitted_at|date:"F j, Y" }}{% else %}Draft (not submitted){% endif %}
+      </li>
+      <li><strong>Current Status:</strong> {% firstof app.get_status_display "—" %}</li>
+    </ul>
+  </div>
+
+  <!-- Uploaded Documents -->
+  <div class="card">
+    <h3>Uploaded Documents</h3>
+    {% if documents %}
+      <ul class="details">
+        {% for doc in documents %}
+          <li>
+            {{ doc.get_doc_type_display }} —
+            <a href="{{ doc.file.url }}" target="_blank" rel="noopener">View</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No documents uploaded.</p>
+    {% endif %}
+  </div>
+
+  <!-- Admin Actions -->
+  <div class="card">
+    <h3>Admin Actions Timeline</h3>
+    {% if actions %}
+      <ul class="timeline">
+        {% for act in actions %}
+          <li>
+            <div class="time">{{ act.created_at|date:"M d, Y H:i" }}</div>
+            <div class="desc">
+              <strong>{% firstof act.by_user.get_full_name act.by_user.username "Staff" %}</strong>
+              — {{ act.action }}
+              {% if act.notes %}<p class="notes">{{ act.notes }}</p>{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No recorded actions yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Print / PDF Button -->
+  <div class="actions">
+    <a href="{% url 'recruitment:application_status_pdf' %}" target="_blank" class="btn primary" rel="noopener">
+      Download / Print PDF
+    </a>
+  </div>
+</div>
+{% endblock %}

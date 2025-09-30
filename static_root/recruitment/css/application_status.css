@@ -1,0 +1,115 @@
+/* General page */
+.status-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+  color: #111;
+}
+
+.status-page h2 {
+  color: #0f3b6d;
+  margin-bottom: 10px;
+  font-size: 22px;
+}
+
+.status-page .muted {
+  color: #666;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+/* Cards */
+.card {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.card h3 {
+  color: #0f3b6d;
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.details {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.details li {
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.details strong {
+  color: #0a2a4d;
+}
+
+/* Timeline (Admin Actions) */
+.timeline {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.timeline li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.timeline .time {
+  min-width: 120px;
+  font-size: 12px;
+  color: #666;
+}
+
+.timeline .desc {
+  flex: 1;
+  font-size: 14px;
+}
+
+.timeline .desc strong {
+  color: #0f3b6d;
+}
+
+.timeline .notes {
+  font-size: 13px;
+  font-style: italic;
+  color: #444;
+  margin-top: 4px;
+}
+
+/* Actions (bottom button) */
+.actions {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn.primary {
+  background: #0f3b6d;
+  color: #fff;
+}
+
+.btn.primary:hover {
+  background: #0a2540;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}

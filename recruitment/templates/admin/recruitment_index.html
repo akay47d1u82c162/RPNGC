@@ -1,0 +1,38 @@
+{# templates/admin/recruitment_index.html #}
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<style>
+  .grp { margin: 0 0 16px 0; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+  .grp summary { background: #0f3b6d; color: #fff; padding: 10px 14px; cursor: pointer; font-weight: 600; }
+  .grp .body { padding: 12px; background: #fff; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #f9fafb; }
+  .card h4 { margin: 0 0 8px 0; font-size: 14px; }
+  .links a { margin-right: 10px; }
+</style>
+
+{% for group in grouped %}
+  <details class="grp" {% if forloop.first %}open{% endif %}>
+    <summary>{{ group.title }}</summary>
+    <div class="body">
+      <div class="cards">
+        {% for m in group.items %}
+          <div class="card">
+            <h4>{{ m.name }}</h4>
+            <div class="links">
+              {% if m.perms.change and m.admin_url %}
+                <a href="{{ m.admin_url }}">{% trans "View" %}</a>
+              {% endif %}
+              {% if m.perms.add and m.add_url %}
+                <a href="{{ m.add_url }}">{% trans "Add" %}</a>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </details>
+{% endfor %}
+{% endblock %}

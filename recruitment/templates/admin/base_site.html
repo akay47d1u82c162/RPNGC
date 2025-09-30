@@ -1,0 +1,70 @@
+{% extends "recruitment/base.html" %}
+{% load static %}
+{% block title %}Staff Dashboard · RPNGC{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'recruitment/css/staff_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="staff-header">
+  <div class="brand">
+    <img src="{% static 'recruitment/images/logo.png' %}" alt="RPNGC" class="brand-logo">
+    <div>
+      <h1>RPNGC Recruitment — Staff Console</h1>
+      <p class="muted">Manage cycles, applications, documents, testing, interviews & selections.</p>
+    </div>
+  </div>
+</div>
+
+<div class="staff-layout">
+  <aside class="nav" id="adminNav">
+    <h3>Recruitment</h3>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_application_changelist' %}">Applications</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_recruitmentcycle_changelist' %}">Recruitment Cycles</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_document_changelist' %}">Documents</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_applicationeligibility_changelist' %}">Eligibility</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_screeningaction_changelist' %}">Screening Actions</a>
+
+    <h3>Testing</h3>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_test_changelist' %}">Tests</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_question_changelist' %}">Questions</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_choice_changelist' %}">Choices</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_testattempt_changelist' %}">Attempts</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_attemptanswer_changelist' %}">Answers</a>
+
+    <h3>Interviews & Selection</h3>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_interviewschedule_changelist' %}">Interview Schedules</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_interviewscore_changelist' %}">Interview Scores</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_finalselection_changelist' %}">Final Selections</a>
+
+    <h3>Comms & Audit</h3>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_notification_changelist' %}">Notifications</a>
+    <a class="nav-link" data-url="{% url 'admin:recruitment_auditlog_changelist' %}">Audit Logs</a>
+  </aside>
+
+  <section class="work">
+    <iframe id="adminFrame"
+            class="admin-frame"
+            title="Admin Content"
+            src="{% url 'admin:recruitment_application_changelist' %}"></iframe>
+  </section>
+</div>
+
+<script>
+  (function () {
+    const nav = document.getElementById('adminNav');
+    const frame = document.getElementById('adminFrame');
+    nav.addEventListener('click', function (e) {
+      const a = e.target.closest('.nav-link');
+      if (!a) return;
+      e.preventDefault();
+      const url = a.getAttribute('data-url');
+      if (!url) return;
+      frame.src = url;
+      nav.querySelectorAll('.nav-link.active').forEach(x => x.classList.remove('active'));
+      a.classList.add('active');
+    }, false);
+  })();
+</script>
+{% endblock %}

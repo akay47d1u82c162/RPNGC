@@ -1,0 +1,68 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block content %}
+  {% if current_app %}
+    <div style="border:1px solid #d1d5db;background:#f8fafc;border-radius:12px;padding:12px 14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:600">Application Overview</div>
+          <div style="font-size:13px;color:#475569">
+            Cycle: <strong>{{ current_app.cycle }}</strong> •
+            Status: <strong>{{ current_app.get_status_display }}</strong> •
+            Total Score: <strong>{{ current_app.total_score }}</strong> •
+            {% if current_elig %}
+              Eligibility: <strong>{{ current_elig.get_result_display }}</strong>
+              <span style="font-size:12px;color:#64748b">
+                (Age: {{ current_elig.age_ok|yesno:"OK,Fail" }},
+                 Edu: {{ current_elig.education_ok|yesno:"OK,Fail" }},
+                 Med: {{ current_elig.medical_ok|yesno:"OK,Fail" }},
+                 Police: {{ current_elig.police_ok|yesno:"OK,Fail" }})
+              </span>
+            {% else %}
+              Eligibility: <em>not yet computed</em>
+            {% endif %}
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <a class="button" href="{% url 'rpngc_admin:recruitment_applicantprofile_print' original.pk %}" target="_blank">Print / Export</a>
+          <form method="post" action="{% url 'rpngc_admin:recruitment_applicantprofile_application_action' original.pk 'shortlist' %}">
+            {% csrf_token %}
+            <button type="submit" class="button default">Shortlist</button>
+          </form>
+          <form method="post" action="{% url 'rpngc_admin:recruitment_applicantprofile_application_action' original.pk 'approve' %}">
+            {% csrf_token %}
+            <button type="submit" class="button button-primary">Approve</button>
+          </form>
+          <form method="post" action="{% url 'rpngc_admin:recruitment_applicantprofile_application_action' original.pk 'reject' %}">
+            {% csrf_token %}
+            <button type="submit" class="button deletelink">Reject</button>
+          </form>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <details>
+          <summary style="cursor:pointer;color:#0f3b6d"><strong>Documents</strong> (click to expand)</summary>
+          <div style="overflow:auto;margin-top:8px">
+            <table class="listing" style="min-width:560px">
+              <thead>
+                <tr><th>Type</th><th>File</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                {% if current_app_docs %}
+                  {{ current_app_docs|safe }}
+                {% else %}
+                  <tr><td colspan="3"><em>No documents uploaded.</em></td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+  {% endif %}
+
+  {{ block.super }}
+{% endblock %}
