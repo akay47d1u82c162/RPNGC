@@ -1,0 +1,39 @@
+# render.yaml — RPNGC (Django) + Postgres
+databases:
+  - name: rpngc-db
+    plan: free            # or starter
+    databaseName: rpngc
+    user: rpngc
+
+services:
+  - type: web
+    name: rpngc-web
+    env: python
+    plan: free            # or starter
+    branch: main
+    autoDeploy: true
+
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --workers=2 --threads=4 --timeout=120
+    postDeployCommand: |
+      python manage.py migrate --noinput
+      python manage.py collectstatic --noinput
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        # include your Render URL and any custom domain (comma-separated)
+        value: rpngc-web.onrender.com
+      - key: postgresql://rpngc_user:TlBHP3EU4YJdfBD0ArvNTVIuxhGk2SYx@dpg-d3djqg3ipnbc73cdjr8g-a/rpngc
+        fromDatabase:
+          name: rpngc-db
+          property: connectionString
+      - key: DJANGO_SETTINGS_MODULE
+        value: backend.settings
