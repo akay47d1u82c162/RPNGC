@@ -2,21 +2,15 @@ services:
   - type: web
     name: rpngc-web
     env: python
+    region: singapore
     plan: free
-    buildCommand: |
-      pip install -r requirements.txt
-      python manage.py collectstatic --noinput
-      python manage.py migrate --noinput
-    startCommand: gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --log-file -
-    healthCheckPath: /admin/login/
+    autoDeploy: true
+    buildCommand: ./build.sh
+    startCommand: gunicorn backend.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
     envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: backend.settings
       - key: SECRET_KEY
         generateValue: true
-      - key: DEBUG
-        value: "False"
-      - key: ALLOWED_HOSTS
-        value: "*"
-      - key: PYTHONUNBUFFERED
+      - key: RENDER
         value: "1"
+      - key: DATABASE_URL        # paste the value in the Render UI after first sync
+        sync: false
