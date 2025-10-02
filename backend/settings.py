@@ -1,22 +1,27 @@
-# settings.py
 import os
 from pathlib import Path
-import dj_database_url  # ensure in requirements.txt: dj-database-url
+import dj_database_url  # <- add this in requirements.txt
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ----------------------- Security / Env -----------------------
+# Use proper env var names. On Render, set SECRET_KEY in the dashboard or render.yaml.
 SECRET_KEY = os.environ.get("SECRET_KEY", "changeme-in-prod")
-# Prefer explicit DEBUG var; e.g., set DEBUG=true locally. On Render don't set it (defaults to False).
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 # Allow local hosts by default; append Render hostname if present
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")]
+
+# Render exposes the public hostname via RENDER_EXTERNAL_HOSTNAME (and/or RENDER_EXTERNAL_URL)
 RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# CSRF trusted origins
+# Same-origin iframes (to embed admin in Staff Dashboard)
+X_FRAME_OPTIONS = "SAMEORIGIN"
+# If you use CSP, also: CSP_FRAME_ANCESTORS = ("'self'",)
+
+# CSRF trusted origins — include dev + Render hostname (https)
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
@@ -24,16 +29,13 @@ CSRF_TRUSTED_ORIGINS = [
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
-# If Render provides the full external URL
+# If Render provides full URL instead (e.g., https://your-app.onrender.com)
 RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL")
 if RENDER_EXTERNAL_URL and RENDER_EXTERNAL_URL not in CSRF_TRUSTED_ORIGINS:
     CSRF_TRUSTED_ORIGINS.append(RENDER_EXTERNAL_URL)
 
 # Honor X-Forwarded-Proto from Render's proxy for secure redirects
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-# Same-origin iframes (to embed admin in Staff Dashboard)
-X_FRAME_OPTIONS = "SAMEORIGIN"
 
 # ----------------------- Installed apps -----------------------
 INSTALLED_APPS = [
@@ -54,7 +56,7 @@ INSTALLED_APPS = [
 # ----------------------- Middleware -----------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # serve static files in Render
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # <- serve static files in Render
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -65,10 +67,8 @@ MIDDLEWARE = [
     "recruitment.middleware.AdminIframeXFrameMiddleware",
 ]
 
-ROOT_URLCONF = "backend.urls"          # <-- change "backend" if your project module is different
-WSGI_APPLICATION = "backend.wsgi.application"
+ROOT_URLCONF = "backend.urls"
 
-# ----------------------- Templates -----------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -85,33 +85,45 @@ TEMPLATES = [
     },
 ]
 
+WSGI_APPLICATION = "backend.wsgi.application"
+
 # ----------------------- Database -----------------------
-# Prefer DATABASE_URL (Render/External Postgres). If not set, fall back to SQLite for local dev.
-db_url = os.environ.get("DATABASE_URL")
-if db_url:
-    # If your provider requires SSL: append ?sslmode=require to DATABASE_URL OR set ssl_require=True below.
+# Base (local dev) config – your original values
+_BASE_DB = {
+    "ENGINE": "django.db.backends.postgresql",
+    "NAME": os.environ.get("DB_NAME", "RPNGC"),
+    "USER": os.environ.get("DB_USER", "postgres"),
+    "PASSWORD": os.environ.get("DB_PASSWORD", "akay47d1u82c"),
+    "HOST": os.environ.get("DB_HOST", "localhost"),
+    "PORT": os.environ.get("DB_PORT", "5433"),
+}
+
+# If DATABASE_URL exists (Render Postgres), prefer it; otherwise use your local config.
+if os.environ.get("DATABASE_URL"):
     DATABASES = {
-        "default": dj_database_url.parse(db_url, conn_max_age=600)  # set ssl_require=True if needed
+        "default": dj_database_url.config(
+            env="DATABASE_URL",
+            conn_max_age=600,
+            ssl_require=not DEBUG,  # Render Postgres typically requires SSL
+        )
     }
 else:
-    # Local dev fallback — avoids failing builds by trying to hit localhost:5433 on Render
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+    DATABASES = {"default": _BASE_DB}
 
 # ----------------------- Auth / redirects -----------------------
 AUTH_USER_MODEL = "recruitment.User"
 LOGIN_URL = "recruitment:login"
-LOGIN_REDIRECT_URL = "recruitment:applicant_form"  # role-based view may override
+LOGIN_REDIRECT_URL = "recruitment:applicant_form"  # role-based view will override when appropriate
 LOGOUT_REDIRECT_URL = "recruitment:landing"
 
 # ----------------------- Static & Media -----------------------
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "static_root"           # where collectstatic writes (Render)
-STATICFILES_DIRS = [BASE_DIR / "static"]         # optional for dev/global assets
+# Static files to collect at build time
+STATIC_ROOT = BASE_DIR / "static_root"
+# Keep your dev/global static for local dev only; harmless in prod
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# WhiteNoise hashed storage for efficient caching on Render
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
@@ -127,7 +139,7 @@ RECRUITMENT_REQUIRED_DOCS = [
 RECRUITMENT_DOCS_MUST_BE_APPROVED = True
 RECRUITMENT_ENFORCE_AGE_EDU = True
 
-# ----------------------- Jazzmin -----------------------
+# ----------------------- Jazzmin (unchanged) -----------------------
 JAZZMIN_SETTINGS = {
     "site_title": "RPNGC Admin",
     "site_header": "RPNGC",
@@ -200,6 +212,7 @@ JAZZMIN_SETTINGS = {
     "changeform_format": "horizontal_tabs",
     "changeform_format_overrides": {"auth.user": "collapsible", "auth.group": "vertical_tabs"},
 }
+
 JAZZMIN_UI_TWEAKS = {
     "theme": "minty",
     "dark_mode_theme": None,
@@ -227,23 +240,22 @@ ADMIN_SITE_TITLE = "RPNGC Admin Portal"
 ADMIN_INDEX_TITLE = "Welcome to RPNGC Recruitment Administration"
 
 # ----------------------- Cookies / Session -----------------------
+# Use secure cookies only in production (HTTPS). Render apps are HTTPS by default.
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_SAMESITE = "Strict"
-SESSION_COOKIE_AGE = 1800  # 30 minutes
+
+# Session timeout (30 minutes of inactivity)
+SESSION_COOKIE_AGE = 1800
 SESSION_SAVE_EVERY_REQUEST = True
 
-# (Optional) Timezone/Language defaults
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "Pacific/Port_Moresby"
-USE_I18N = True
-USE_TZ = True
-
-# ==================== Optional: Custom Admin Site ====================
+# ==================== Optional: Custom Admin Site (unchanged) ====================
 """
+# In your recruitment/admin.py or a separate admin_site.py:
+
 from django.contrib.admin import AdminSite
 from django.utils.translation import gettext_lazy as _
 
@@ -254,7 +266,9 @@ class RPNGCAdminSite(AdminSite):
     
     def each_context(self, request):
         context = super().each_context(request)
-        context.update({'custom_dashboard_data': self.get_dashboard_data(request)})
+        context.update({
+            'custom_dashboard_data': self.get_dashboard_data(request),
+        })
         return context
     
     def get_dashboard_data(self, request):
@@ -268,7 +282,9 @@ class RPNGCAdminSite(AdminSite):
         return {
             'total_applications': Application.objects.count(),
             'pending_applications': Application.objects.filter(status='pending').count(),
-            'applications_this_week': Application.objects.filter(created_at__gte=week_ago).count(),
+            'applications_this_week': Application.objects.filter(
+                created_at__gte=week_ago
+            ).count(),
         }
 
 rpngc_admin_site = RPNGCAdminSite(name='rpngc_admin')
