@@ -1,0 +1,230 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% now "Y" as current_year %}
+{% now "Y-m-d" as today %}
+
+{% block content %}
+<div class="container-fluid rpngc-dashboard">
+
+  <!-- Header + actions -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-0">RPNGC Recruitment Dashboard</h1>
+      <small class="text-muted">Quick overview, links, and actions</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'rpngc_admin:recruitment_application_changelist' %}" class="btn btn-primary">Browse Applications</a>
+      <a href="{% url 'rpngc_admin:recruitment_document_changelist' %}?verify_status__exact=PENDING" class="btn btn-outline-primary">Verify Documents</a>
+      <a href="{% url 'rpngc_admin:recruitment_recruitmentcycle_changelist' %}" class="btn btn-outline-primary">Manage Cycles</a>
+    </div>
+  </div>
+
+  <!-- Quick Links: PARENT MODULES ONLY -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <strong>Quick Links</strong>
+      <small class="text-muted">Parent modules only</small>
+    </div>
+    <div class="card-body">
+      <div class="row g-4">
+
+        <!-- Applicants & Applications -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <h6 class="text-muted mb-2">Applicants & Applications</h6>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_applicantprofile_changelist' %}">Applicant Profiles</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_application_changelist' %}">Applications</a>
+          </div>
+        </div>
+
+        <!-- Cycles & Assessments -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <h6 class="text-muted mb-2">Cycles & Assessments</h6>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_recruitmentcycle_changelist' %}">Recruitment Cycles</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_test_changelist' %}">Tests</a>
+          </div>
+        </div>
+
+        <!-- Interviews & Final Selection -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <h6 class="text-muted mb-2">Interviews & Selection</h6>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_interviewschedule_changelist' %}">Interview Schedules</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_finalselection_changelist' %}">Final Selection</a>
+          </div>
+        </div>
+
+        <!-- Admin, Lookups & Audit -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <h6 class="text-muted mb-2">Admin, Lookups & Audit</h6>
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_notification_changelist' %}">Notifications</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_auditlog_changelist' %}">Audit Logs</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_province_changelist' %}">Provinces</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_district_changelist' %}">Districts</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'rpngc_admin:recruitment_user_changelist' %}">Users</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card card-primary card-outline shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Applicants</div>
+          <div class="display-6">{{ stats.applicants_count|default:"0" }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <a class="text-decoration-none" href="{% url 'rpngc_admin:recruitment_application_changelist' %}">
+        <div class="card card-primary card-outline shadow-sm h-100">
+          <div class="card-body">
+            <div class="text-muted small">Applications</div>
+            <div class="display-6">{{ stats.applications_count|default:"0" }}</div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a class="text-decoration-none" href="{% url 'rpngc_admin:recruitment_application_changelist' %}?status__in=PENDING,SCREENING">
+        <div class="card card-primary card-outline shadow-sm h-100">
+          <div class="card-body">
+            <div class="text-muted small">Pending/Screening</div>
+            <div class="display-6">{{ stats.pending_count|default:"0" }}</div>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a class="text-decoration-none" href="{% url 'rpngc_admin:recruitment_application_changelist' %}?status__exact=SHORTLISTED">
+        <div class="card card-primary card-outline shadow-sm h-100">
+          <div class="card-body">
+            <div class="text-muted small">Shortlisted</div>
+            <div class="display-6">{{ stats.shortlisted_count|default:"0" }}</div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Two columns of lists -->
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <strong>Active Cycles</strong>
+          <a href="{% url 'rpngc_admin:recruitment_recruitmentcycle_changelist' %}" class="btn btn-sm btn-outline-primary">View all</a>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Name</th><th>Year</th><th>Type</th><th>Dates</th><th></th></tr></thead>
+            <tbody>
+              {% for c in active_cycles %}
+              <tr>
+                <td>{{ c.name }}</td>
+                <td>{{ c.intake_year }}</td>
+                <td>{{ c.get_rec_type_display }}</td>
+                <td>{{ c.start_date }} → {{ c.end_date }}</td>
+                <td class="text-end">
+                  <a class="btn btn-xs btn-outline-primary" href="{% url 'rpngc_admin:recruitment_application_changelist' %}?cycle__id__exact={{ c.id }}">Applications</a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted p-3">No active cycles</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <strong>Recent Applications</strong>
+          <a href="{% url 'rpngc_admin:recruitment_application_changelist' %}" class="btn btn-sm btn-outline-primary">View all</a>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>ID</th><th>Applicant</th><th>Cycle</th><th>Status</th><th>Submitted</th></tr></thead>
+            <tbody>
+              {% for a in recent_apps %}
+              <tr>
+                <td><a href="{% url 'rpngc_admin:recruitment_application_change' a.id %}">#{{ a.id }}</a></td>
+                <td>{{ a.applicant.full_name }}</td>
+                <td>{{ a.cycle }}</td>
+                <td>{{ a.get_status_display }}</td>
+                <td>{{ a.submitted_at|date:"Y-m-d H:i" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted p-3">No recent submissions</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <strong>Documents Awaiting Verification</strong>
+          <a href="{% url 'rpngc_admin:recruitment_document_changelist' %}?verify_status__exact=PENDING" class="btn btn-sm btn-outline-primary">Review</a>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Applicant</th><th>Type</th><th>Uploaded</th><th></th></tr></thead>
+            <tbody>
+              {% for d in pending_docs %}
+              <tr>
+                <td>{{ d.application.applicant.full_name }}</td>
+                <td>{{ d.get_doc_type_display }}</td>
+                <td>{{ d.uploaded_at|date:"Y-m-d H:i" }}</td>
+                <td class="text-end"><a href="{% url 'rpngc_admin:recruitment_document_change' d.id %}" class="btn btn-xs btn-outline-primary">Open</a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted p-3">No pending documents</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <strong>Upcoming Interviews</strong>
+          <a href="{% url 'rpngc_admin:recruitment_interviewschedule_changelist' %}" class="btn btn-sm btn-outline-primary">Schedule</a>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>When</th><th>Applicant</th><th>Location</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {% for s in upcoming_interviews %}
+              <tr>
+                <td>{{ s.scheduled_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ s.application.applicant.full_name }}</td>
+                <td>{{ s.location|default:"—" }}</td>
+                <td>{{ s.get_status_display }}</td>
+                <td class="text-end"><a href="{% url 'rpngc_admin:recruitment_interviewschedule_change' s.id %}" class="btn btn-xs btn-outline-primary">Open</a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted p-3">No upcoming interviews</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

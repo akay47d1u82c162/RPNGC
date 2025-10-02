@@ -26,14 +26,14 @@ a:hover{ text-decoration:none; }
 /* Cards & buttons (kept) */
 .card{
   background:var(--card); border-radius:12px; padding:16px;
-  box-shadow:0 1px 3px rgba(0,0,0,.06);
+  box-shadow:0 1px 3px rgba(129, 127, 127, 0.06);
 }
 .cards{ display:grid; gap:16px; }
 .btn{
   display:inline-block; padding:.6rem 1rem; border-radius:.75rem;
   border:1px solid #e5e7eb; text-decoration:none; background:#f8fafc; color:#111827;
 }
-.btn:hover{ background:#eef2f7; }
+.btn:hover{ background:hsl(213, 36%, 95%); }
 .btn.primary{ background:var(--brand); border-color:var(--brand); color:#fff; }
 .btn.small{ padding:.4rem .7rem; font-size:.875rem; border-radius:.65rem; }
 .btn.small.outline{ background:transparent; color:var(--nav-fg); border-color:rgba(255,255,255,.35); }

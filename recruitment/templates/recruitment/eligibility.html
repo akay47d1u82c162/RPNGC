@@ -1,0 +1,196 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Eligibility Snapshot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="{% static 'recruitment/images/logo.png' %}">
+  <style>
+    :root{--ink:#0b1220;--muted:#6b7280;--line:#d1d5db;--brand:#0d47a1;--panel:#0d47a1;--chip:#e5effa;--bg:#f8fafc;--card:#ffffff;--ok:#065f46;--bad:#991b1b;--warn:#8a6d00}
+    html,body{background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial;margin:0}
+    .wrap{max-width:1080px;margin:24px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 16px 12px}
+    .grid{display:grid;gap:12px}
+    .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .row{display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:center}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .brand .logo{width:44px;height:44px;border-radius:10px;background:var(--chip);display:grid;place-items:center}
+    .title{font-size:20px;margin:0}
+    .subtitle{font-size:13px;color:#1f2937}
+    .btn{display:inline-block;border:1px solid #cbd5e1;border-radius:10px;padding:8px 14px;text-decoration:none;color:inherit;background:#fff}
+    .btn.primary{background:#0f766e;color:#fff;border-color:#0f766e}
+    .btn.link{border-color:transparent}
+    .muted{color:var(--muted)}
+    .badge{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;border:1px solid #d1d5db;background:#eef2f7}
+    .badge.ok{border-color:#10b981;background:#ecfdf5;color:var(--ok)}
+    .badge.bad{border-color:#ef4444;background:#fef2f2;color:var(--bad)}
+    .badge.warn{border-color:#f59e0b;background:#fffbeb;color:var(--warn)}
+    .table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    .table th,.table td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+    .table th{background:var(--panel);color:#fff;font-weight:600}
+    .hr{height:1px;background:var(--line);margin:12px 0}
+    .empty{padding:10px;border:1px dashed var(--line);border-radius:10px;background:#f9fafb}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">
+          <img src="{% static 'recruitment/images/logo.png' %}" alt="RPNGC" style="width:28px;height:28px;object-fit:contain">
+        </div>
+        <div>
+          <h1 class="title">Eligibility Snapshot</h1>
+          <div class="subtitle">Status and checks for your latest application</div>
+        </div>
+      </div>
+      <div>
+        <a class="btn" href="{% url 'recruitment:applicant_dashboard' %}">Back to Dashboard</a>
+        <a class="btn primary" href="{% url 'recruitment:application_status' %}">Application Status</a>
+      </div>
+    </header>
+
+    {% if messages %}
+      <div style="margin:10px 0">
+        {% for m in messages %}<p class="badge" style="display:block;margin:.25rem 0">{{ m }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Application summary -->
+    <section class="card" style="margin-bottom:12px">
+      <div class="grid g2">
+        <div class="row">
+          <div class="muted">Application ID</div>
+          <div>#{{ application.id }}{% if not application %}<span class="muted"> — none yet</span>{% endif %}</div>
+        </div>
+        <div class="row">
+          <div class="muted">Cycle</div>
+          <div>{{ application.cycle.name }} ({{ application.cycle.intake_year }})</div>
+        </div>
+        <div class="row">
+          <div class="muted">Stream</div>
+          <div>{{ application.get_rec_type_display|default:application.rec_type }}</div>
+        </div>
+        <div class="row">
+          <div class="muted">Status</div>
+          <div>
+            <span class="badge {% if application.status in 'APPROVED,SHORTLISTED' %}ok{% elif application.status in 'REJECTED' %}bad{% else %}{% endif %}">
+              {{ application.get_status_display|default:application.status }}
+            </span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="muted">Submitted</div>
+          <div>
+            {% if application.submitted_at %}
+              {{ application.submitted_at|date:"Y-m-d H:i" }}
+            {% else %}
+              <span class="muted">Draft (not submitted)</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Eligibility details -->
+    <section class="card">
+      <h2 style="margin:0 0 8px 0">Automated Eligibility</h2>
+
+      {% if not eligibility %}
+        <div class="empty">
+          No eligibility snapshot is available yet.
+          {% if application and application.cycle %}
+            It will appear after your application is submitted and processed.
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="grid g2" style="margin-bottom:10px">
+          <div class="row">
+            <div class="muted">Overall Result</div>
+            <div>
+              {% with result_disp=eligibility.get_result_display|default:eligibility.result %}
+              <span class="badge {% if eligibility.result == 'ELIGIBLE' %}ok{% elif eligibility.result == 'INELIGIBLE' %}bad{% else %}warn{% endif %}">
+                {{ result_disp }}
+              </span>
+              {% endwith %}
+            </div>
+          </div>
+          <div class="row">
+            <div class="muted">Evaluated</div>
+            <div>{{ eligibility.run_at|date:"Y-m-d H:i" }}</div>
+          </div>
+        </div>
+
+        <table class="table">
+          <thead>
+          <tr>
+            <th>Check</th>
+            <th>Outcome</th>
+            <th>Notes</th>
+          </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Age requirement</td>
+              <td>
+                <span class="badge {% if eligibility.age_ok %}ok{% else %}bad{% endif %}">
+                  {% if eligibility.age_ok %}Meets requirement{% else %}Does not meet{% endif %}
+                </span>
+              </td>
+              <td class="muted">Based on your DOB vs cycle min/max age.</td>
+            </tr>
+            <tr>
+              <td>Minimum education</td>
+              <td>
+                <span class="badge {% if eligibility.education_ok %}ok{% else %}bad{% endif %}">
+                  {% if eligibility.education_ok %}Meets requirement{% else %}Does not meet{% endif %}
+                </span>
+              </td>
+              <td class="muted">Compared with cycle’s minimum education level.</td>
+            </tr>
+            <tr>
+              <td>Medical clearance</td>
+              <td>
+                <span class="badge {% if eligibility.medical_ok %}ok{% else %}bad{% endif %}">
+                  {% if eligibility.medical_ok %}Provided/Verified{% else %}Missing/Unverified{% endif %}
+                </span>
+              </td>
+              <td class="muted">As per uploaded medical certificate.</td>
+            </tr>
+            <tr>
+              <td>Police clearance</td>
+              <td>
+                <span class="badge {% if eligibility.police_ok %}ok{% else %}bad{% endif %}">
+                  {% if eligibility.police_ok %}Provided/Verified{% else %}Missing/Unverified{% endif %}
+                </span>
+              </td>
+              <td class="muted">As per police clearance document.</td>
+            </tr>
+            <tr>
+              <td>Duplicate application check</td>
+              <td>
+                <span class="badge {% if eligibility.duplicates_ok %}ok{% else %}warn{% endif %}">
+                  {% if eligibility.duplicates_ok %}No duplicates found{% else %}Possible duplicates{% endif %}
+                </span>
+              </td>
+              <td class="muted">Cross-check on NID, name and contact.</td>
+            </tr>
+          </tbody>
+        </table>
+      {% endif %}
+      <div class="hr"></div>
+      <div class="muted">
+        If anything looks wrong, double-check your application and documents. For assistance, contact the recruitment office.
+      </div>
+    </section>
+
+    <div style="margin-top:12px">
+      <a class="btn" href="{% url 'recruitment:application_form' %}">Edit Application</a>
+      <a class="btn" href="{% url 'recruitment:tests_list' %}">View Tests</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,13 +1,27 @@
 {% extends "recruitment/base.html" %}
+{% load static %}
+
 {% block title %}Welcome · RPNGC{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'recruitment/css/landing.css' %}">
+{% endblock %}
+
 {% block content %}
+<div class="landing">
   <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+    <!-- Welcome / CTA -->
     <article class="card">
-      <h3>Welcome to RPNGC Recruitment</h3>
+      <h3>Welcome to Royal Papua New Guinea Constabulary Police Recruitment Portal</h3>
+      <img class="hero" src="{% static 'recruitment/images/vision.jpeg' %}" alt="RPNGC Recruitment">
+      <p class="muted">
+        Apply to serve your community. Create an account, complete your profile and submit your
+        application online.
+      </p>
       
-      </div>
     </article>
 
+    <!-- Active recruitment -->
     <article class="card">
       <h3>Active Recruitment</h3>
       <p class="muted">
@@ -17,6 +31,49 @@
           Login to view current cycle and requirements.
         {% endif %}
       </p>
+      <ul class="bullet muted">
+        <li>Check eligibility requirements</li>
+        <li>Upload required documents</li>
+        <li>Track tests and interviews</li>
+      </ul>
     </article>
   </div>
+
+  <!-- Bottom section: History + Notes -->
+  <section class="bottom">
+    <div class="bottom-grid">
+          
+        </div>
+
+        <div class="history">
+          <p>The history of the Royal Papua New Guinea Constabulary (RPNGC) dates back to the late 19th century, when the Australian colonial administration established the Royal Papuan Constabulary as part of setting up Papua. The New Guinea Police Force, which covered the former German and British New Guinea, was also established by Australia during World War I and formalized as part of the League of Nations mandate in 1920.</p>
+
+          <p>During World War II, the RPNGC played a crucial role in resisting the Japanese occupation of New Guinea. After the war, the two colonial territories were gradually amalgamated, leading to the merger of the Royal Papuan Constabulary and the New Guinea Police Force. This structure was retained after Papua New Guinea gained independence in 1975, and the name was changed from Royal Papua and New Guinea Constabulary to the present name with the removal of the “and” in 1972.</p>
+
+          <p>Throughout the 1970s and 1980s, the RPNGC faced numerous challenges, including a shortage of resources, poor infrastructure, and a high crime rate. Despite these challenges, the force worked to establish community policing initiatives and improve its overall professionalism.</p>
+
+          <p>In 2000, the RPNGC faced one of its biggest challenges when a secessionist movement in Bougainville sparked a civil war. The Constabulary played a key role in restoring peace to the region, demonstrating its importance in maintaining law and order in Papua New Guinea.</p>
+
+          <p>Despite these efforts, the RPNGC has continued to face challenges in recent years, including corruption, limited resources, and high levels of crime, particularly in urban areas. Efforts have been made to address these issues through reforms and training programs, but progress has been slow.</p>
+
+          <p>In addition to its role in maintaining law and order within Papua New Guinea, the RPNGC has also played a role in international peacekeeping efforts. Papua New Guinea has sent police officers to serve in peacekeeping missions in countries such as East Timor and Solomon Islands.</p>
+
+          <p>Overall, the RPNGC has a long and storied history, and remains an important institution in Papua New Guinea. It is responsible for maintaining law and order and protecting the safety of the country’s citizens, and has demonstrated its commitment to this role through numerous challenges over the years.</p>
+        </div>
+      </article>
+
+      <!-- Notes / Info panel -->
+      <aside class="card notes-card">
+        <h3>Notes & Guidance</h3>
+        <ul class="notes-list">
+          <li>Use a personal, accessible email address for your account.</li>
+          <li>Prepare clear scans/photos of required documents before starting.</li>
+          <li>Check test windows regularly; late submissions are not accepted.</li>
+          <li>If you need help, contact the recruitment office via the Help menu.</li>
+          <li>Your data is processed for recruitment purposes as per policy.</li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+</div>
 {% endblock %}

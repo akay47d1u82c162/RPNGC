@@ -7,14 +7,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{% static 'recruitment/css/application_form.css' %}">
   <style>
-    :root{--ink:#0b1220;--muted:#6b7280;--line:#d1d5db;--brand:#0f3b6d;--panel:#0f3b6d;--chip:#e5effa;--bg:#f8fafc;--card:#ffffff}
+    :root{--ink:#0b1220;--muted:#6b7280;--line:#d1d5db;--brand:#0d47a1;--panel:#0d47a1;--chip:#e5effa;--bg:#f8fafc;--card:#ffffff}
     html,body{background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial}
     .wrap{max-width:1080px;margin:24px auto;padding:0 16px}
     .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 16px 12px}
     .grid{display:grid;gap:12px}
     .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
     .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
     .row{display:grid;grid-template-columns:180px 1fr;gap:10px;align-items:center}
     .muted{color:var(--muted)}
     .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
@@ -47,6 +46,9 @@
       width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:8px 10px;background:#fff
     }
     textarea{min-height:96px}
+    .small{font-size:12px;color:var(--muted)}
+    .files-list{margin-top:6px}
+    .files-list li{margin:2px 0}
   </style>
 </head>
 <body>
@@ -59,11 +61,10 @@
         </div>
         <div>
           <h1 class="title">The Royal Papua New Guinea Constabulary (RPNGC)</h1>
-          <div class="subtitle">Application Form — Regular Recruit</div>
+          <div class="subtitle">Application Form</div>
         </div>
       </div>
       <div class="inline">
-        <!-- NEW: Back to Dashboard button -->
         <a class="btn" href="{% url 'recruitment:applicant_dashboard' %}">Back to Dashboard</a>
         <a class="btn" href="{% url 'recruitment:logout' %}">Logout</a>
       </div>
@@ -78,11 +79,33 @@
     <form method="post" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
 
+      <!-- Cycle & Stream -->
+      <section class="card">
+        <div class="section-head">
+          <h2>Recruitment Cycle & Stream</h2>
+          {% if active_cycle %}<span class="muted">Active: {{ active_cycle.name }} • {{ active_cycle.intake_year }} ({{ active_cycle.get_rec_type_display }})</span>{% endif %}
+        </div>
+        <div class="grid g2">
+          <div class="field">
+            <label for="{{ application_form.cycle.id_for_label }}">Select Recruitment Cycle<span class="req">*</span></label>
+            {{ application_form.cycle }} {{ application_form.cycle.errors }}
+            <div class="muted">Pick the intake you’re applying for.</div>
+          </div>
+          <div class="field">
+            <label for="{{ application_form.rec_type.id_for_label }}">Recruitment Stream<span class="req">*</span></label>
+            {{ application_form.rec_type }} {{ application_form.rec_type.errors }}
+            <div class="muted">Must match the selected cycle.</div>
+          </div>
+        </div>
+      </section>
+
       <!-- Applicant Information -->
       <section class="card">
         <div class="section-head">
           <h2>Applicant Information</h2>
-          {% if active_cycle %}<span class="muted">{{ active_cycle.name }} • {{ active_cycle.intake_year }}</span>{% endif %}
+          {% if profile_form.instance and profile_form.instance.age %}
+            <span class="muted">Current Age: {{ profile_form.instance.age }}</span>
+          {% endif %}
         </div>
 
         <div class="grid g2">
@@ -99,18 +122,21 @@
             {{ profile_form.dob }} {{ profile_form.dob.errors }}
           </div>
           <div class="field">
-            <label>Current Age</label>
-            <input type="text" value="{% if profile_form.instance and profile_form.instance.age %}{{ profile_form.instance.age }}{% endif %}" disabled>
+            <label for="{{ profile_form.nid_number.id_for_label }}">NID / Passport No.</label>
+            {{ profile_form.nid_number }} {{ profile_form.nid_number.errors }}
           </div>
 
           <div class="field">
-            <label for="{{ profile_form.province_of_origin.id_for_label }}">Province of origin</label>
+            <label for="{{ profile_form.province_of_origin.id_for_label }}">Province of Origin</label>
             {{ profile_form.province_of_origin }} {{ profile_form.province_of_origin.errors }}
           </div>
-          <div></div>
+          <div class="field">
+            <label for="{{ profile_form.address.id_for_label }}">Residential Address</label>
+            {{ profile_form.address }} {{ profile_form.address.errors }}
+          </div>
 
           <div class="field">
-            <label for="{{ profile_form.province.id_for_label }}">Current Province of residence</label>
+            <label for="{{ profile_form.province.id_for_label }}">Current Province</label>
             {{ profile_form.province }} {{ profile_form.province.errors }}
           </div>
           <div class="field">
@@ -127,47 +153,60 @@
             {{ profile_form.email }} {{ profile_form.email.errors }}
           </div>
 
-          <div class="field">
-            <label for="{{ profile_form.nid_number.id_for_label }}">NID / Passport No.</label>
-            {{ profile_form.nid_number }} {{ profile_form.nid_number.errors }}
-          </div>
-
-          <div class="photo">
+          <div class="photo" style="grid-column:1/-1">
             <div class="field" style="flex:1">
               <label for="{{ profile_form.photo.id_for_label }}">Profile Photo</label>
-              {{ profile_form.photo }}
+              {{ profile_form.photo }} {{ profile_form.photo.errors }}
               <div class="muted">Upload a clear passport-style photo (JPG/PNG).</div>
-              {{ profile_form.photo.errors }}
             </div>
             {% if profile_form.instance.photo %}
-              <figure style="margin:0">
-                <img src="{{ profile_form.instance.photo.url }}" alt="Current photo" style="width:92px;height:92px;object-fit:cover;border-radius:12px;border:1px solid var(--line)">
-                <figcaption class="muted" style="text-align:center;margin-top:6px">Current</figcaption>
-              </figure>
+            <figure style="margin:0">
+              <img src="{{ profile_form.instance.photo.url }}" alt="Current photo" style="width:92px;height:92px;object-fit:cover;border-radius:12px;border:1px solid var(--line)">
+              <figcaption class="muted" style="text-align:center;margin-top:6px">Current</figcaption>
+            </figure>
             {% endif %}
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="grid g2">
-          <div class="field">
-            <label for="{{ application_form.from_bougainville.id_for_label }}">Are you from Bougainville?</label>
-            <div class="inline">
-              {{ application_form.from_bougainville }} {{ application_form.from_bougainville.errors }}
-            </div>
-          </div>
-          <div class="field">
-            <label for="{{ application_form.applied_unit.id_for_label }}">Applied Unit</label>
-            {{ application_form.applied_unit }} {{ application_form.applied_unit.errors }}
           </div>
         </div>
       </section>
 
-
-      <!-- Alternative Contact -->
+      <!-- Application specifics -->
       <section class="card">
-        <div class="section-head"><h2>Alternative Contact person</h2></div>
+        <div class="section-head"><h2>Application Details</h2></div>
+        <div class="grid g2">
+          <div class="field">
+            <label for="{{ application_form.applied_unit.id_for_label }}">Applied Unit</label>
+            {{ application_form.applied_unit }} {{ application_form.applied_unit.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.from_bougainville.id_for_label }}">Are you from Bougainville?</label>
+            {{ application_form.from_bougainville }} {{ application_form.from_bougainville.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.years_experience.id_for_label }}">Years of Work Experience</label>
+            {{ application_form.years_experience }} {{ application_form.years_experience.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.years_experience_other.id_for_label }}">Other (specify)</label>
+            {{ application_form.years_experience_other }}
+          </div>
+          <div class="field" style="grid-column:1/-1">
+            <label for="{{ application_form.reason_for_applying.id_for_label }}">Reason for applying</label>
+            {{ application_form.reason_for_applying }} {{ application_form.reason_for_applying.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.reservist_2021_2022.id_for_label }}">Reservist recruited 2021–2022?</label>
+            {{ application_form.reservist_2021_2022 }}
+          </div>
+          <div class="field">
+            <label for="{{ application_form.criminal_conviction.id_for_label }}">Do you have a criminal conviction?</label>
+            {{ application_form.criminal_conviction }} {{ application_form.criminal_conviction.errors }}
+          </div>
+        </div>
+      </section>
+
+      <!-- Alternative Contact (One entry) -->
+      <section class="card">
+        <div class="section-head"><h2>Alternative Contact Person</h2></div>
         {{ alt_contact_formset.management_form }}
         {% for f in alt_contact_formset %}
           <div class="grid g2" style="margin-bottom:10px">
@@ -198,23 +237,24 @@
 
       <!-- Education & Work History -->
       <section class="card">
-        <div class="section-head"><h2>Education Background and Work History</h2></div>
+        <div class="section-head"><h2>Education Background & Work History</h2></div>
 
-        <div class="grid g3">
+        <div class="grid g2">
           <div class="field">
             <label for="{{ profile_form.highest_education_level.id_for_label }}">Highest Education Level Obtained</label>
             {{ profile_form.highest_education_level }} {{ profile_form.highest_education_level.errors }}
           </div>
+          <div></div>
         </div>
 
         <h3 class="muted" style="margin:.5rem 0">Education Records</h3>
         {{ education_formset.management_form }}
         <table class="table">
           <thead>
-            <tr>
-              <th>Level</th><th>School / Institution</th><th>Province</th>
-              <th>Start</th><th>End</th><th>Certificate</th><th>GPA</th>
-            </tr>
+          <tr>
+            <th>Level</th><th>School / Institution</th><th>Province</th>
+            <th>Start</th><th>End</th><th>Certificate</th><th>GPA</th>
+          </tr>
           </thead>
           <tbody>
           {% for f in education_formset %}
@@ -240,9 +280,9 @@
         {{ work_formset.management_form }}
         <table class="table">
           <thead>
-            <tr>
-              <th>Employer</th><th>Position</th><th>Start</th><th>End</th><th>Duties</th>
-            </tr>
+          <tr>
+            <th>Employer</th><th>Position</th><th>Start</th><th>End</th><th>Duties</th>
+          </tr>
           </thead>
           <tbody>
           {% for f in work_formset %}
@@ -261,29 +301,75 @@
         </table>
       </section>
 
-      <!-- Experience + Reservist + Reason -->
-      <section class="card">
-        <div class="section-head"><h2>Experience & Motivation</h2></div>
-
-        <div class="grid g3">
-          <div class="field">
-            <label for="{{ application_form.years_experience.id_for_label }}">Years of Work Experience</label>
-            {{ application_form.years_experience }} {{ application_form.years_experience.errors }}
-          </div>
-          <div class="field">
-            <label for="{{ application_form.years_experience_other.id_for_label }}">Other (specify)</label>
-            {{ application_form.years_experience_other }}
-          </div>
-          <div class="field">
-            <label for="{{ application_form.reservist_2021_2022.id_for_label }}">Reservist recruited 2021–2022?</label>
-            {{ application_form.reservist_2021_2022 }}
-          </div>
+      <!-- Supporting Documents -->
+      <section class="card" id="supporting-documents">
+        <div class="section-head">
+          <h2>Supporting Documents</h2>
+          <span class="muted">Upload clear scans/photos. Accepted: PDF, JPG, PNG.</span>
         </div>
 
-        <div class="field" style="margin-top:10px">
-          <label for="{{ application_form.reason_for_applying.id_for_label }}">What is your reason for applying to join the RPNGC Regular Recruit Program?</label>
-          {{ application_form.reason_for_applying }} {{ application_form.reason_for_applying.errors }}
-        </div>
+        {# If a Django form for documents is provided (recommended), render it #}
+        {% if documents_form %}
+          <div class="grid g2">
+            <div class="field">
+              <label for="{{ documents_form.certificates.id_for_label }}">Education Certificates (multiple)</label>
+              {{ documents_form.certificates }} {{ documents_form.certificates.errors }}
+              <div class="small">Combine as one PDF or upload multiple files.</div>
+            </div>
+            <div class="field">
+              <label for="{{ documents_form.police_clearance.id_for_label }}">Police Clearance</label>
+              {{ documents_form.police_clearance }} {{ documents_form.police_clearance.errors }}
+              <div class="small">Issued within the last 6–12 months (as per notice).</div>
+            </div>
+            <div class="field">
+              <label for="{{ documents_form.medical_certificate.id_for_label }}">Medical Certificate</label>
+              {{ documents_form.medical_certificate }} {{ documents_form.medical_certificate.errors }}
+            </div>
+            <div class="field">
+              <label for="{{ documents_form.reference_letters.id_for_label }}">Reference Letters (multiple)</label>
+              {{ documents_form.reference_letters }} {{ documents_form.reference_letters.errors }}
+              <div class="small">Upload up to 3 reference letters.</div>
+            </div>
+          </div>
+        {% else %}
+          {# Fallback: plain file inputs if no Django form is supplied #}
+          <div class="grid g2">
+            <div class="field">
+              <label>Education Certificates (multiple)</label>
+              <input type="file" name="certificates[]" multiple accept=".pdf,.jpg,.jpeg,.png">
+              <div class="small">Combine as one PDF or upload multiple files.</div>
+            </div>
+            <div class="field">
+              <label>Police Clearance</label>
+              <input type="file" name="police_clearance" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <div class="field">
+              <label>Medical Certificate</label>
+              <input type="file" name="medical_certificate" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <div class="field">
+              <label>Reference Letters (multiple)</label>
+              <input type="file" name="reference_letters[]" multiple accept=".pdf,.jpg,.jpeg,.png">
+              <div class="small">Upload up to 3 reference letters.</div>
+            </div>
+          </div>
+        {% endif %}
+
+        {# Optional: show already uploaded files if view provides them #}
+        {% if existing_documents %}
+          <div class="hr"></div>
+          <div>
+            <div class="muted" style="margin-bottom:6px">Previously uploaded:</div>
+            <ul class="files-list">
+              {% for doc in existing_documents %}
+                <li>
+                  <a href="{{ doc.url }}" target="_blank" rel="noopener">{{ doc.label }}</a>
+                  {% if doc.size %}<span class="small">({{ doc.size }})</span>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
       </section>
 
       <!-- References -->
@@ -292,9 +378,9 @@
         {{ reference_formset.management_form }}
         <table class="table">
           <thead>
-            <tr>
-              <th>Name</th><th>Position Title</th><th>Phone Number</th><th>Email address</th>
-            </tr>
+          <tr>
+            <th>Name</th><th>Position Title</th><th>Phone Number</th><th>Email address</th>
+          </tr>
           </thead>
           <tbody>
           {% for f in reference_formset %}
@@ -316,25 +402,14 @@
         <div class="section-head"><h2>Declaration</h2></div>
 
         <div class="grid g2">
-          <div class="field">
-            <label for="{{ application_form.criminal_conviction.id_for_label }}">Do you have a criminal conviction?</label>
-            {{ application_form.criminal_conviction }} {{ application_form.criminal_conviction.errors }}
-          </div>
-        </div>
-
-        <div class="info" style="margin:10px 0">
-          I hereby declare the information I have provided is correct. I understand it is an offense to supply misleading
-          or false information and that the RPNGC reserves the right to reject or cancel my application. I agree that I am
-          happy to serve the RPNGC wherever I am posted.
-        </div>
-
-        <div class="grid g3">
           <div class="inline">
             {{ application_form.declaration_agreed }}
-            <label for="{{ application_form.declaration_agreed.id_for_label }}">I agree to the above declaration</label>
+            <label for="{{ application_form.declaration_agreed.id_for_label }}">I agree that the information provided is correct.</label>
+            {{ application_form.declaration_agreed.errors }}
           </div>
+          <div></div>
           <div class="field">
-            <label for="{{ application_form.signature_name.id_for_label }}">Signature of applicant (type name)</label>
+            <label for="{{ application_form.signature_name.id_for_label }}">Signature (type full name)</label>
             {{ application_form.signature_name }} {{ application_form.signature_name.errors }}
           </div>
           <div class="field">
@@ -346,44 +421,12 @@
 
       <!-- ACTIONS -->
       <div class="actions">
-        <!-- NEW: Back to Dashboard button (bottom) -->
         <a class="btn" href="{% url 'recruitment:applicant_dashboard' %}">Back to Dashboard</a>
-
-        <button class="btn" type="submit" name="intent" value="save">Save</button>
+        <button class="btn" type="submit" name="intent" value="save">Save Draft</button>
         <button class="btn primary" type="submit" name="intent" value="submit"
-                onclick="return confirm('Submit your application now? You will not be able to edit certain details while screening is in progress.')">
+                onclick="return confirm('Submit your application now? You will not be able to edit while screening is in progress.')">
           Submit Application
         </button>
-
-        <!-- (Optional) Per-type document uploader block that your view supplies via `document_rows` -->
-        {% if document_rows %}
-        <section class="box" style="width:100%">
-          <h3>Required Documents</h3>
-          <p class="muted">Upload all mandatory documents here. Your application cannot be submitted until all required files are provided.</p>
-          <table class="table">
-            <thead><tr><th>Document Type</th><th>File</th></tr></thead>
-            <tbody>
-              {% for row in document_rows %}
-                <tr>
-                  <td>{{ row.doc_type_label }}</td>
-                  <td>
-                    {{ row.form.doc_type }}
-                    {% if row.existing %}
-                      <div style="margin-bottom:6px">
-                        <small>Current file: <em>{{ row.existing.file.name|default:"(none)" }}</em></small>
-                      </div>
-                    {% endif %}
-                    {{ row.form.file }}
-                    {% if row.form.file.errors %}
-                      <div class="err">{{ row.form.file.errors }}</div>
-                    {% endif %}
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </section>
-        {% endif %}
       </div>
     </form>
   </main>

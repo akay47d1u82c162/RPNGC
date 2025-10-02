@@ -1,114 +1,249 @@
-/* Full page centering */
-html, body {
-  height: 100%;
-  margin: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #f8fafc;
-  font-family: system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;
-  font-size: 12px;
+/* RPNGC Auth — glassy, floating, police-branded */
+
+/* ---------- Theme ---------- */
+:root{
+  --brand:#0d47a1;         /* RPNGC deep blue */
+  --brand-2:#0a2a4d;       /* darker navy */
+  --accent:#0f766e;        /* optional accent if needed elsewhere */
+  --ink:#0b1220;
+  --muted:#6b7280;
+  --line:#cbd5e1;
+  --glass-bg:rgba(13,71,161,0.10);
+  --glass-border:rgba(255,255,255,0.25);
+  --error:#b91c1c;
+  --ok:#0f766e;
 }
 
-/* Wrapper for header, login card, footer */
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  max-width: 340px;
+/* ---------- Page canvas ---------- */
+.auth-page{
+  min-height:100svh;
+  display:grid;
+  place-items:center;
+  padding:24px 16px;
+  color:var(--ink);
+  background:
+    linear-gradient(180deg, rgba(10,42,77,0.40), rgba(10,42,77,0.25)),
+    var(--auth-bg) center/cover no-repeat fixed;
+  position:relative;
+  isolation:isolate;
 }
 
-/* Header */
-.topbar {
-  background: linear-gradient(90deg, #0f3b6d, #0a2a4d);
-  color: #fff;
-  padding: 6px 10px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  justify-content: center;
-}
-.topbar img {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-}
-.topbar h1 {
-  font-size: 14px;
-  margin: 0;
-}
-.topbar p {
-  font-size: 10px;
-  margin: 0;
-  opacity: 0.85;
+/* soft vignette */
+.auth-page::before{
+  content:"";
+  position:absolute; inset:0;
+  background:radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,0.35), transparent 55%),
+             radial-gradient(1000px 500px at 50% 110%, rgba(255,255,255,0.18), transparent 60%);
+  pointer-events:none;
+  z-index:-1;
 }
 
-/* Login box */
-.login-card {
-  width: 100%;
-  padding: 14px;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  text-align: center;
-}
-.login-card h2 {
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-.login-card label {
-  font-size: 11px;
-  font-weight: 500;
-  display: block;
-  margin-bottom: 2px;
-  text-align: left;
-}
-.login-card input {
-  width: 100%;
-  padding: 5px 7px;
-  font-size: 11px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-.login-card button {
-  padding: 6px 10px;
-  font-size: 11px;
-  border: none;
-  border-radius: 5px;
-  background: #0f766e;
-  color: #fff;
-  cursor: pointer;
-}
-.login-card button:hover {
-  background: #0c5d54;
-}
-.login-card a {
-  font-size: 10px;
-  margin-left: 6px;
-  color: #0f3b6d;
-  text-decoration: none;
+/* ---------- Back link ---------- */
+.back-link{
+  display:inline-flex; align-items:center; gap:6px;
+  margin-bottom:14px;
+  padding:6px 10px;
+  border-radius:999px;
+  text-decoration:none;
+  color:#fff;
+  background:linear-gradient(90deg, var(--brand), var(--brand-2));
+  box-shadow:0 4px 18px rgba(13,71,161,.25);
+  border:1px solid rgba(255,255,255,0.25);
+  backdrop-filter:saturate(140%) blur(6px);
+  -webkit-backdrop-filter:saturate(140%) blur(6px);
 }
 
-/* Footer */
-.footer {
-  background: linear-gradient(90deg, #0f3b6d, #0a2a4d);
-  color: #fff;
-  text-align: center;
-  padding: 6px 8px;
-  border-radius: 8px;
-  font-size: 10px;
-  width: 100%;
+/* ---------- Card ---------- */
+.auth-card{
+  width:min(440px, 92vw);
+  padding:22px 20px 18px;
+  border-radius:16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.66), rgba(255,255,255,0.55)),
+    var(--glass-bg);
+  border:1px solid var(--glass-border);
+  box-shadow:
+    0 18px 40px rgba(10,42,77,.28),
+    inset 0 1px 0 rgba(255,255,255,.35);
+  backdrop-filter:saturate(160%) blur(12px);
+  -webkit-backdrop-filter:saturate(160%) blur(12px);
+  transform:translateY(0);
+  animation:floatIn .45s ease-out both;
+  text-align:left;
 }
-.footer img {
-  width: 20px;
-  height: 20px;
-  margin-bottom: 3px;
+
+@keyframes floatIn{
+  from{ opacity:0; transform:translateY(8px) scale(.99) }
+  to{ opacity:1; transform:translateY(0) scale(1) }
 }
-.footer strong {
-  font-size: 11px;
+
+.auth-card h1{
+  margin:0 0 10px;
+  font-size:20px;
+  font-weight:700;
+  letter-spacing:.2px;
+  color:var(--ink);
+}
+
+/* ---------- Form ---------- */
+.field{ margin:10px 0 12px; }
+.field label{
+  display:block;
+  margin:0 0 6px;
+  font-size:12px;
+  font-weight:600;
+  color:#1f2937;
+}
+
+.field input,
+.field select{
+  width:100%;
+  appearance:none;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:9px 12px;
+  font:13px/1.2 system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;
+  color:var(--ink);
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.field select{
+  background-image:
+    linear-gradient(45deg, transparent 50%, #64748b 50%),
+    linear-gradient(135deg, #64748b 50%, transparent 50%),
+    linear-gradient(to right, transparent, transparent);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px),
+    calc(100% - 42px) 50%;
+  background-size:6px 6px, 6px 6px, 1px 28px;
+  background-repeat:no-repeat;
+  padding-right:40px;
+}
+
+.field input:focus,
+.field select:focus{
+  outline:0;
+  border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(13,71,161,.16);
+}
+
+.error{
+  margin-top:6px;
+  font-size:12px;
+  color:#fff;
+  background:linear-gradient(90deg, #b91c1c, #7f1d1d);
+  border:1px solid rgba(255,255,255,.25);
+  padding:6px 10px;
+  border-radius:10px;
+}
+
+.alert.error{ margin:8px 0 12px; }
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border-radius:10px;
+  padding:10px 14px;
+  font-weight:600;
+  text-decoration:none;
+  border:1px solid transparent;
+  cursor:pointer;
+  transition:transform .06s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.btn.primary{
+  color:#fff;
+  background:linear-gradient(90deg, var(--brand), var(--brand-2));
+  border-color:rgba(255,255,255,0.18);
+  box-shadow:0 8px 24px rgba(13,71,161,.30);
+}
+.btn.primary:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(13,71,161,.35); }
+.btn.primary:active{ transform:translateY(0); }
+
+.muted{ color:var(--muted); font-size:12px; }
+
+/* ---------- Small helpers ---------- */
+.auth-card p{ margin:0; }
+.auth-card a{ color:var(--brand); text-decoration:none; }
+.auth-card a:hover{ text-decoration:underline; }
+
+/* make the role dropdown match inputs if rendered by Django as <select> */
+#id_login_as{ font-size:13px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width:420px){
+  .auth-card{ padding:18px 16px 16px; border-radius:14px; }
+  .back-link{ font-size:12px; padding:5px 9px; }
+}
+/* -- remove borders for a cleaner glass look -- */
+.auth-card{ border:none; }
+.back-link{ border:none; }  /* optional: removes subtle pill border too */
+
+/* ========= Full-bleed background & no page chrome ========= */
+html, body{
+  height:100%;
+  margin:0;
+  background:transparent; /* kill any white page background */
+}
+
+/* Ensure the hero image covers everything edge-to-edge */
+.auth-page{
+  min-height:100vh;
+  padding:clamp(16px, 3vw, 32px);
+  background:
+    linear-gradient(180deg, rgba(10,42,77,.42), rgba(10,42,77,.25)),
+    var(--auth-bg) center / cover no-repeat fixed;
+}
+
+/* ========= Remove all borders that looked white ========= */
+.auth-card,
+.back-link,
+.alert,
+.btn,
+.field input,
+.field select{
+  border:none !important;
+}
+
+/* ========= Glassy, floating container (login & sign-up) ========= */
+.auth-card{
+  background:linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.18));
+  backdrop-filter:blur(14px) saturate(160%);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:0 18px 44px rgba(10,42,77,.34), inset 0 1px 0 rgba(255,255,255,.25);
+  transform:translateY(0);
+  animation:floatIn .45s ease-out both, floatY 6s ease-in-out .45s infinite alternate;
+}
+
+/* Wider, airy card for the sign-up page (if you add .signup on the card) */
+.auth-card.signup,
+.auth-card.register{
+  width:min(560px, 94vw);
+}
+
+/* ========= Inputs: borderless, with soft focus glow ========= */
+.field input,
+.field select{
+  background:rgba(255,255,255,.85);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+  outline:0;
+}
+.field input:focus,
+.field select:focus{
+  box-shadow:0 0 0 4px rgba(13,71,161,.18);
+}
+
+/* ========= Subtle float animations ========= */
+@keyframes floatIn{
+  from{ opacity:0; transform:translateY(10px) scale(.98) }
+  to{ opacity:1; transform:translateY(0) scale(1) }
+}
+@keyframes floatY{
+  from{ transform:translateY(0) }
+  to{ transform:translateY(-4px) }
 }

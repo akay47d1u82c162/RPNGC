@@ -1,197 +1,195 @@
 {% load static %}
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>{% block title %}RPNGC{% endblock %}</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="stylesheet" href="{% static 'recruitment/css/base.css' %}">
-    {% block extra_head %}{% endblock %}
-    <style>
-      header.site-header {
-        position: sticky;
-        top: 0;
-        z-index: 9999;
-        background: #0b2344; /* RPNGC police branding */
-        color: #fff;
-        padding: 12px 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      header.site-header .brand {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      header.site-header .brand img {
-        height: 42px;
-        width: auto;
-      }
-      header.site-header .brand a {
-        color: #fff;
-        font-weight: 600;
-        font-size: 1.2rem;
-        text-decoration: none;
-      }
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}RPNGC{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{% static 'recruitment/css/base.css' %}">
+  {% block extra_head %}{% endblock %}
+  <style>
+    /* Header / menu */
+    .site-header{background:#0b4a7d;color:#fff}
+    .site-header .wrap{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff}
+    .brand img{height:36px;width:auto}
+    .brand span{font-weight:700;letter-spacing:.3px}
+    .menu-toggle{background:transparent;border:0;color:#fff;font-weight:600;cursor:pointer;padding:8px 10px;border-radius:8px}
+    .menu-toggle:hover{background:rgba(255,255,255,.12)}
+    .menu-panel{position:absolute;right:16px;top:64px;background:#fff;color:#111;
+      width:min(360px,90vw);border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 16px 34px rgba(0,0,0,.18);
+      display:none;z-index:50;overflow:hidden}
+    .menu-panel.open{display:block}
+    .menu-panel .section{padding:12px 14px}
+    .menu-panel .sep{height:1px;background:#eef2f7;margin:6px 0}
+    .menu-panel a[role="menuitem"]{display:block;padding:10px 12px;border-radius:10px;
+      color:#0b4a7d;text-decoration:none;font-weight:600}
+    .menu-panel a[role="menuitem"]:hover{background:#f1f5f9}
+    .menu-profile{display:flex;gap:12px;align-items:center}
+    .avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;background:#e5e7eb;display:inline-block}
+    .avatar.fallback{display:grid;place-items:center;font-weight:700;color:#0b4a7d}
+    .btn.small{padding:.35rem .6rem;font-size:.85rem;border-radius:.5rem}
+    .menu-logout-btn{
+      display:block;width:100%;text-align:left;background:none;border:0;
+      padding:10px 12px;border-radius:10px;color:#0b4a7d;font-weight:600;cursor:pointer
+    }
+    .menu-logout-btn:hover{background:#f1f5f9}
 
-      footer.site-footer {
-        background: #0b2344;
-        color: #fff;
-        padding: 24px 16px;
-        margin-top: 40px;
-      }
-      footer.site-footer .footer-inner {
-        max-width: 1100px;
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 12px;
-      }
-      footer.site-footer img {
-        height: 40px;
-        width: auto;
-      }
-      footer.site-footer .footer-notes {
-        font-size: 0.85rem;
-        color: #d1d5db;
-      }
-
-      .wrap {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 18px 16px;
-      }
-    </style>
-  </head>
-  <body>
-    <header class="site-header">
-  <div class="brand">
-    <img src="{% static 'recruitment/images/logo.png' %}" alt="RPNGC Logo" style="height:42px;width:auto;">
-    <a href="{% url 'recruitment:landing' %}" style="color:#fff;text-decoration:none;font-weight:600;font-size:1.1rem;">
-      RPNGC Recruitment
-    </a>
-  </div>
-
-  {# ONLY a Menu button here — no inline links #}
-  <button id="menuToggle"
-          class="menu-toggle"
-          aria-haspopup="true"
-          aria-expanded="false"
-          aria-controls="menuPanel"
-          type="button">
-    Menu ▾
-  </button>
-
-  {# All links live inside this collapsible panel #}
-  <nav id="menuPanel" class="menu-panel" role="menu" aria-hidden="true">
-    {% if request.user.is_authenticated %}
-      <div class="menu-user">
-        <div class="menu-user-row">
-          <div class="avatar">
-            {% if request.user.applicantprofile.photo %}
-              <img src="{{ request.user.applicantprofile.photo.url }}" alt="Profile photo">
-            {% else %}
-              <span class="avatar-fallback">{{ request.user.username|first|upper }}</span>
-            {% endif %}
-          </div>
-          <div class="menu-user-meta">
-            <div class="menu-user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
-            <div class="menu-user-email">{{ request.user.email|default:"" }}</div>
-          </div>
-        </div>
-
-        <form id="photoForm" class="menu-user-actions" method="post"
-              action="{% url 'recruitment:profile_photo_update' %}"
-              enctype="multipart/form-data">
-          {% csrf_token %}
-          <input id="photoInput" type="file" name="photo" accept="image/*" class="sr-only-input">
-          <label for="photoInput" class="btn small outline">Change photo</label>
-          {% if request.user.applicantprofile.photo %}
-            <a class="btn small" href="{{ request.user.applicantprofile.photo.url }}" target="_blank">View</a>
-          {% endif %}
-          <button type="submit" id="photoSubmit" class="btn small outline" style="display:none;">Upload</button>
-        </form>
-        <div class="sep"></div>
-      </div>
-
-      <a role="menuitem" href="{% url 'recruitment:application_form' %}">Application Form</a>
-      <a role="menuitem" href="{% url 'recruitment:application_status' %}">Status</a>
-      {% if request.user.role != "APPLICANT" %}
-        <a role="menuitem" href="{% url 'recruitment:staff_dashboard' %}">Staff</a>
-      {% endif %}
-      <div class="sep"></div>
-      <a role="menuitem" href="{% url 'recruitment:logout' %}">Logout</a>
-    {% else %}
-      <a role="menuitem" href="{% url 'recruitment:login' %}">Login</a>
-      <a role="menuitem" href="{% url 'recruitment:register' %}">Register</a>
-    {% endif %}
-  </nav>
-</header>
-
-
-    <!-- Main content -->
-    <main class="wrap">
-      {% if messages %}
-        <div class="messages">
-          {% for m in messages %}
-            <div class="msg {{ m.tags }}">{{ m }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-      {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
-    <footer class="site-footer">
-      <div class="footer-inner">
+    footer.site-footer{margin-top:36px;background:#0b4a7d;color:#e5eff9}
+    footer .wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
+    footer img{height:24px;width:auto;opacity:.95}
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="{% url 'recruitment:landing' %}">
         <img src="{% static 'recruitment/images/logo.png' %}" alt="RPNGC Logo">
-        <div class="footer-notes">
-          © {{ now|date:"Y" }} Royal Papua New Guinea Constabulary. <br>
-          Internal use only — for authorized staff. Contact ICT for support.
-        </div>
+        <span>RPNGC Recruitment</span>
+      </a>
+
+      <div style="position:relative">
+        <button id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="menuPanel">☰ Menu</button>
+
+        <nav id="menuPanel" class="menu-panel" role="menu" aria-hidden="true">
+          {% if request.user.is_authenticated %}
+
+            <!-- Profile block (avatar + identity) -->
+            <div class="section">
+              <div class="menu-profile">
+                {% with prof=request.user.applicantprofile %}
+                  {% if prof and prof.photo %}
+                    <img class="avatar" src="{{ prof.photo.url }}" alt="Profile photo">
+                  {% else %}
+                    <div class="avatar fallback">👤</div>
+                  {% endif %}
+                {% endwith %}
+                <div>
+                  <div style="font-weight:700">{{ request.user.get_full_name|default:request.user.username }}</div>
+                  <div class="muted" style="font-size:.9rem">{{ request.user.email|default:"—" }}</div>
+                </div>
+              </div>
+
+              <!-- Photo change only for applicants -->
+              {% with prof=request.user.applicantprofile %}
+                {% if prof %}
+                  <form style="margin-top:10px;display:flex;gap:8px;align-items:center" method="post"
+                        action="{% url 'recruitment:profile_photo_update' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" name="photo" accept="image/*" required
+                          style="flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:6px;background:#f8fafc">
+                    <button class="btn small" type="submit">Change photo</button>
+                    {% if prof.photo %}
+                      <a class="btn small" href="{{ prof.photo.url }}" target="_blank">View</a>
+                    {% endif %}
+                  </form>
+                {% endif %}
+              {% endwith %}
+            </div>
+
+            <div class="sep"></div>
+
+            <!-- Applicant links (only if user has ApplicantProfile) -->
+            {% with prof=request.user.applicantprofile %}
+              {% if prof %}
+                <div class="section">
+                  <a role="menuitem" href="{% url 'recruitment:application_form' %}">Application Form</a>
+                  <a role="menuitem" href="{% url 'recruitment:application_status' %}">Application Status</a>
+                  <a role="menuitem" href="{% url 'recruitment:interview_schedule_list' %}">Interview schedule</a>
+                  <a role="menuitem" href="{% url 'recruitment:tests_list' %}">Tests &amp; attempts</a>
+                  <a role="menuitem" href="{% url 'recruitment:cycles_list' %}">Recruitment cycles</a>
+                  <a role="menuitem" href="{% url 'recruitment:eligibility_list' %}">Eligibility snapshots</a>
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <!-- Staff/Admin link (safe: no reverse needed) -->
+            {% if request.user.is_staff %}
+              <div class="sep"></div>
+              <div class="section">
+                <a role="menuitem" href="/admin_site/">Staff / Admin</a>
+              </div>
+            {% endif %}
+
+            <div class="sep"></div>
+
+            <!-- Logout (POST) -->
+            <div class="section">
+              <form method="post" action="{% url 'recruitment:logout' %}" style="margin:0">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'recruitment:landing' %}">
+                <button type="submit" class="menu-logout-btn" role="menuitem">Logout</button>
+              </form>
+            </div>
+
+          {% else %}
+            <div class="section">
+              <a role="menuitem" href="{% url 'recruitment:login' %}">Login</a>
+              <a role="menuitem" href="{% url 'recruitment:register' %}">Register</a>
+            </div>
+          {% endif %}
+        </nav>
       </div>
-    </footer>
+    </div>
+  </header>
 
-    <script>
-      (function () {
-        const btn   = document.getElementById('menuToggle');
-        const panel = document.getElementById('menuPanel');
-        if (btn && panel) {
-          const closePanel = () => {
-            panel.classList.remove('open');
-            panel.setAttribute('aria-hidden','true');
-            btn.setAttribute('aria-expanded','false');
-          };
-          const openPanel = () => {
-            panel.classList.add('open');
-            panel.setAttribute('aria-hidden','false');
-            btn.setAttribute('aria-expanded','true');
-          };
-          btn.addEventListener('click', () => {
-            panel.classList.contains('open') ? closePanel() : openPanel();
-          });
-          document.addEventListener('click', (e) => {
-            if (!panel.contains(e.target) && !btn.contains(e.target)) closePanel();
-          });
-          document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
-        }
+  <main class="wrap">
+    {% if messages %}
+      <div class="container" style="padding-top:10px">
+        {% for message in messages %}
+          <div class="card" style="border-left:4px solid var(--brand);margin-bottom:10px">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
 
-        const input = document.getElementById('photoInput');
-        const form  = document.getElementById('photoForm');
-        const submitBtn = document.getElementById('photoSubmit');
-        if (input && form) {
-          input.addEventListener('change', () => {
-            if (input.files && input.files.length > 0) {
-              try { form.submit(); }
-              catch (e) { if (submitBtn) submitBtn.style.display = 'inline-block'; }
-            }
-          });
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="{% static 'recruitment/images/logo.png' %}" alt="RPNGC Logo">
+        <div>© Royal Papua New Guinea Constabulary</div>
+      </div>
+      <div class="muted">Internal use only — authorized staff. Contact ICT for support.</div>
+    </div>
+  </footer>
+
+  {% block extra_js %}{% endblock %}
+  <script>
+    (function(){
+      const btn = document.getElementById('menuToggle');
+      const panel = document.getElementById('menuPanel');
+
+      function toggle(){
+        const open = panel.classList.toggle('open');
+        panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+
+      btn?.addEventListener('click', function(e){
+        e.stopPropagation();
+        toggle();
+      });
+
+      document.addEventListener('click', function(e){
+        if(!panel) return;
+        if(!panel.contains(e.target) && !btn.contains(e.target)){
+          panel.classList.remove('open');
+          panel.setAttribute('aria-hidden','true');
+          btn.setAttribute('aria-expanded','false');
         }
-      })();
-    </script>
-    {% block extra_js %}{% endblock %}
-  </body>
+      });
+
+      // keyboard: Esc closes
+      document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape'){
+          panel.classList.remove('open');
+          panel.setAttribute('aria-hidden','true');
+          btn.setAttribute('aria-expanded','false');
+        }
+      });
+    })();
+  </script>
+</body>
 </html>

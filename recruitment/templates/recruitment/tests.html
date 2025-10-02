@@ -1,0 +1,183 @@
+{% load static tz %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tests</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="{% static 'recruitment/images/logo.png' %}">
+  <style>
+    :root{--ink:#0b1220;--muted:#6b7280;--line:#d1d5db;--panel:#0d47a1;--bg:#f8fafc;--card:#ffffff;--ok:#065f46;--bad:#991b1b;--warn:#8a6d00}
+    html,body{background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,Roboto,Inter,Arial;margin:0}
+    .wrap{max-width:1080px;margin:24px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 16px 12px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .brand .logo{width:44px;height:44px;border-radius:10px;background:#e5effa;display:grid;place-items:center}
+    .title{font-size:20px;margin:0}
+    .subtitle{font-size:13px;color:#1f2937}
+    .btn{display:inline-block;border:1px solid #cbd5e1;border-radius:10px;padding:8px 14px;text-decoration:none;color:inherit;background:#fff}
+    .btn.primary{background:#0f766e;color:#fff;border-color:#0f766e}
+    .muted{color:var(--muted)}
+    .table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    .table th,.table td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+    .table th{background:var(--panel);color:#fff;font-weight:600}
+    .empty{padding:10px;border:1px dashed var(--line);border-radius:10px;background:#f9fafb}
+    .small{font-size:12px}
+    .section-title{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">
+          <img src="{% static 'recruitment/images/logo.png' %}" alt="RPNGC" style="width:28px;height:28px;object-fit:contain">
+        </div>
+        <div>
+          <h1 class="title">Tests</h1>
+          <div class="subtitle">Assessments for your current recruitment cycle</div>
+        </div>
+      </div>
+      <div>
+        <a class="btn" href="{% url 'recruitment:applicant_dashboard' %}">Back to Dashboard</a>
+        <a class="btn primary" href="{% url 'recruitment:application_status' %}">Application Status</a>
+      </div>
+    </header>
+
+    {% if messages %}
+      <div style="margin:10px 0">
+        {% for m in messages %}<p class="btn" style="display:block;margin:.25rem 0">{{ m }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    {% now "U" as now_ts %}
+
+    <!-- Open tests -->
+    <section class="card" style="margin-bottom:12px">
+      <div class="section-title">
+        <h2 style="margin:0">Open Now</h2>
+        <span class="muted small">{{ tests_open|length }} open</span>
+      </div>
+
+      {% if tests_open %}
+        <table class="table">
+          <thead>
+          <tr>
+            <th>Test</th>
+            <th style="width:320px">Window</th>
+            <th style="width:220px">Timing</th>
+            <th style="width:140px">Action</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for t in tests_open %}
+            <tr>
+              <td>
+                <strong>{{ t.name }}</strong><br>
+                <span class="muted small">Cycle: {{ t.cycle.name }}</span>
+              </td>
+              <td class="small">
+                Opens: {{ t.opens_at|localtime|date:"Y-m-d H:i" }}<br>
+                Closes: {{ t.closes_at|localtime|date:"Y-m-d H:i" }}
+              </td>
+              <td class="small">
+                Closes in {{ t.closes_at|timeuntil }}
+              </td>
+              <td>
+                {% if t.get_absolute_url %}
+                  <a class="btn primary" href="{{ t.get_absolute_url }}">Start / Continue</a>
+                {% else %}
+                  <span class="muted small">Link not available</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No open tests at the moment.</div>
+      {% endif %}
+    </section>
+
+    <!-- Upcoming tests -->
+    <section class="card" style="margin-bottom:12px">
+      <div class="section-title">
+        <h2 style="margin:0">Upcoming</h2>
+        <span class="muted small">{{ tests_future|length }} scheduled</span>
+      </div>
+
+      {% if tests_future %}
+        <table class="table">
+          <thead>
+          <tr>
+            <th>Test</th>
+            <th style="width:320px">Window</th>
+            <th style="width:220px">Opens</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for t in tests_future %}
+            <tr>
+              <td>
+                <strong>{{ t.name }}</strong><br>
+                <span class="muted small">Cycle: {{ t.cycle.name }}</span>
+              </td>
+              <td class="small">
+                Opens: {{ t.opens_at|localtime|date:"Y-m-d H:i" }}<br>
+                Closes: {{ t.closes_at|localtime|date:"Y-m-d H:i" }}
+              </td>
+              <td class="small">
+                In {{ t.opens_at|timeuntil }}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No upcoming tests.</div>
+      {% endif %}
+    </section>
+
+    <!-- Past tests -->
+    <section class="card">
+      <div class="section-title">
+        <h2 style="margin:0">Closed</h2>
+        <span class="muted small">{{ tests_past|length }} closed</span>
+      </div>
+
+      {% if tests_past %}
+        <table class="table">
+          <thead>
+          <tr>
+            <th>Test</th>
+            <th style="width:320px">Window</th>
+            <th style="width:220px">Closed</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for t in tests_past %}
+            <tr>
+              <td>
+                <strong>{{ t.name }}</strong><br>
+                <span class="muted small">Cycle: {{ t.cycle.name }}</span>
+              </td>
+              <td class="small">
+                Opened: {{ t.opens_at|localtime|date:"Y-m-d H:i" }}<br>
+                Closed: {{ t.closes_at|localtime|date:"Y-m-d H:i" }}
+              </td>
+              <td class="small">
+                {{ t.closes_at|timesince }} ago
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No past tests to show.</div>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

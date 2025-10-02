@@ -1,23 +1,43 @@
 import os
 from pathlib import Path
+import dj_database_url  # <- add this in requirements.txt
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# --- Security ---
-SECRET_KEY = os.getenv("5x48==udk3bxuo#rb_12g#hmin6qeb^e_-6srp-d)y&j#^q^7e", "changeme-in-prod")  # <- fixed
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")]
+# ----------------------- Security / Env -----------------------
+# Use proper env var names. On Render, set SECRET_KEY in the dashboard or render.yaml.
+SECRET_KEY = os.environ.get("SECRET_KEY", "changeme-in-prod")
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
+
+# Allow local hosts by default; append Render hostname if present
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")]
+
+# Render exposes the public hostname via RENDER_EXTERNAL_HOSTNAME (and/or RENDER_EXTERNAL_URL)
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # Same-origin iframes (to embed admin in Staff Dashboard)
 X_FRAME_OPTIONS = "SAMEORIGIN"
 # If you use CSP, also: CSP_FRAME_ANCESTORS = ("'self'",)
 
-# Useful for local dev with 127.0.0.1/localhost
+# CSRF trusted origins — include dev + Render hostname (https)
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 ]
+if RENDER_EXTERNAL_HOSTNAME:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
+# If Render provides full URL instead (e.g., https://your-app.onrender.com)
+RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL")
+if RENDER_EXTERNAL_URL and RENDER_EXTERNAL_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(RENDER_EXTERNAL_URL)
+
+# Honor X-Forwarded-Proto from Render's proxy for secure redirects
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# ----------------------- Installed apps -----------------------
 INSTALLED_APPS = [
     "jazzmin",  # keep first
     "django.contrib.admin",
@@ -33,8 +53,10 @@ INSTALLED_APPS = [
     "recruitment",
 ]
 
+# ----------------------- Middleware -----------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # <- serve static files in Render
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -65,35 +87,51 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "backend.wsgi.application"
 
-# --- Database ---
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "RPNGC"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "akay47d1u82c"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5433"),
-    }
+# ----------------------- Database -----------------------
+# Base (local dev) config – your original values
+_BASE_DB = {
+    "ENGINE": "django.db.backends.postgresql",
+    "NAME": os.environ.get("DB_NAME", "RPNGC"),
+    "USER": os.environ.get("DB_USER", "postgres"),
+    "PASSWORD": os.environ.get("DB_PASSWORD", "akay47d1u82c"),
+    "HOST": os.environ.get("DB_HOST", "localhost"),
+    "PORT": os.environ.get("DB_PORT", "5433"),
 }
 
-# --- Auth / redirects (namespaced) ---
+# If DATABASE_URL exists (Render Postgres), prefer it; otherwise use your local config.
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            env="DATABASE_URL",
+            conn_max_age=600,
+            ssl_require=not DEBUG,  # Render Postgres typically requires SSL
+        )
+    }
+else:
+    DATABASES = {"default": _BASE_DB}
+
+# ----------------------- Auth / redirects -----------------------
 AUTH_USER_MODEL = "recruitment.User"
 LOGIN_URL = "recruitment:login"
 LOGIN_REDIRECT_URL = "recruitment:applicant_form"  # role-based view will override when appropriate
 LOGOUT_REDIRECT_URL = "recruitment:landing"
 
-# --- Static & media ---
+# ----------------------- Static & Media -----------------------
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]       # dev/global static
-STATIC_ROOT = BASE_DIR / "static_root"         # collectstatic target
+# Static files to collect at build time
+STATIC_ROOT = BASE_DIR / "static_root"
+# Keep your dev/global static for local dev only; harmless in prod
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# WhiteNoise hashed storage for efficient caching on Render
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- Recruitment policy knobs ---
+# ----------------------- Recruitment knobs -----------------------
 RECRUITMENT_REQUIRED_DOCS = [
     "G12_CERT", "BIRTH_CERT", "NID_PASSPORT",
     "MED_CLEAR", "POL_CLEAR", "CHAR_REF",
@@ -101,84 +139,153 @@ RECRUITMENT_REQUIRED_DOCS = [
 RECRUITMENT_DOCS_MUST_BE_APPROVED = True
 RECRUITMENT_ENFORCE_AGE_EDU = True
 
+# ----------------------- Jazzmin (unchanged) -----------------------
 JAZZMIN_SETTINGS = {
     "site_title": "RPNGC Admin",
     "site_header": "RPNGC",
-    "site_brand": "Recruitment",
-    "welcome_sign": "Welcome to RPNGC Recruitment Admin",
+    "site_brand": "Recruitment Portal",
+    "welcome_sign": "Welcome to RPNGC Recruitment Admin Portal",
+    "copyright": "© 2025 Royal Papua New Guinea Constabulary",
     "site_logo": "recruitment/images/logo.png",
     "login_logo": "recruitment/images/logo.png",
-    "copyright": "© 2025 Royal Papua New Guinea Constabulary",
-    "site_footer": "Internal system — for authorized staff only.",
-    "site_url": "/staff/",
-
-    # Left menu — group like the screenshot
-    "order_with_respect_to": [
-        "recruitment.ApplicantProfile",
-        "recruitment.Application",
-        "recruitment.RecruitmentCycle",
-        "recruitment.Document",
-        "recruitment.Test",
-        "recruitment.Question",
-        "recruitment.TestAttempt",
-        "recruitment.InterviewSchedule",
-        "recruitment.InterviewScore",
-        "recruitment.FinalSelection",
-        "recruitment.Notification",
-        "recruitment.AuditLog",
-        "recruitment.Province",
-        "recruitment.District",
-        "auth.User",
+    "login_logo_dark": None,
+    "site_logo_classes": "img-circle elevation-3",
+    "site_icon": "recruitment/images/favicon.ico",
+    "topmenu_links": [
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Recruitment Dashboard", "url": "/staff/", "icon": "fas fa-home", "permissions": ["auth.view_user"]},
+        {"app": "recruitment"},
+        {"name": "Support", "url": "https://support.rpngc.gov.pg", "new_window": True, "icon": "fas fa-question-circle"},
     ],
-
+    "usermenu_links": [
+        {"name": "View Profile", "url": "admin:auth_user_change", "icon": "fas fa-user"},
+        {"name": "Change Password", "url": "admin:password_change", "icon": "fas fa-key"},
+        {"model": "auth.user"},
+    ],
+    "show_sidebar": True,
+    "navigation_expanded": True,
     "hide_apps": [],
     "hide_models": [],
-
-    # Icons (Lucide/FontAwesome supported by Jazzmin)
+    "order_with_respect_to": ["recruitment", "auth", "contenttypes", "sessions"],
     "icons": {
-        "recruitment.ApplicantProfile": "fas fa-user",
-        "recruitment.Application": "fas fa-clipboard-list",
-        "recruitment.RecruitmentCycle": "fas fa-calendar-alt",
-        "recruitment.Document": "fas fa-file",
-        "recruitment.Test": "fas fa-check-square",
-        "recruitment.Question": "fas fa-question",
-        "recruitment.TestAttempt": "fas fa-laptop-code",
-        "recruitment.InterviewSchedule": "fas fa-users",
-        "recruitment.InterviewScore": "fas fa-star-half-alt",
-        "recruitment.FinalSelection": "fas fa-award",
-        "recruitment.Notification": "fas fa-bell",
-        "recruitment.AuditLog": "fas fa-shield-alt",
-        "recruitment.Province": "fas fa-map-marked-alt",
-        "recruitment.District": "fas fa-map-marker-alt",
-        "auth.User": "fas fa-user-cog",
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "recruitment": "fas fa-user-plus",
+        "recruitment.application": "fas fa-file-alt",
+        "recruitment.applicant": "fas fa-id-card",
+        "recruitment.intake": "fas fa-calendar-check",
+        "recruitment.document": "fas fa-folder-open",
+        "recruitment.assessment": "fas fa-clipboard-check",
+        "recruitment.notification": "fas fa-bell",
+        "recruitment.settings": "fas fa-cog",
     },
-
-    # “Add” button as a green pill on changelist (like the screenshot)
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    "related_modal_active": True,
+    "show_ui_builder": False,
     "button_classes": {
-        "add": "btn btn-success",
-        "save": "btn btn-primary",
-        "delete": "btn btn-danger",
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
+        "save": "btn-primary",
+        "add": "btn-success",
+        "delete": "btn-danger",
     },
-
-    # Custom assets
+    "custom_links": {
+        "recruitment": [
+            {"name": "Quick Reports", "url": "/admin/recruitment/reports/", "icon": "fas fa-chart-bar", "permissions": ["recruitment.view_application"]},
+            {"name": "Export Data", "url": "/admin/recruitment/export/", "icon": "fas fa-download", "permissions": ["recruitment.view_application"]},
+            {"name": "System Status", "url": "/admin/recruitment/status/", "icon": "fas fa-heartbeat", "permissions": ["auth.view_user"]},
+        ]
+    },
+    "search_bar": True,
+    "search_model": ["auth.User", "recruitment.Application"],
+    "language_chooser": False,
+    "site_url": "/staff/",
+    "site_footer": "Internal system — for authorized staff only. | Powered by Django",
     "custom_css": "recruitment/css/admin_overrides.css",
     "custom_js": "recruitment/js/admin_overrides.js",
-
-    # Sidebar & search
-    "show_sidebar": True,
-    "navigation_expanded": False,  # collapsed by default (compact)
-    "search_model": "recruitment.ApplicantProfile",  # quick search focus
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {"auth.user": "collapsible", "auth.group": "vertical_tabs"},
 }
 
-# Subtle spacing, smaller fonts, teal topbar & dark sidebar
 JAZZMIN_UI_TWEAKS = {
-    "theme": "minty",  # base — we override colors via CSS
+    "theme": "minty",
+    "dark_mode_theme": None,
+    "navbar": "navbar-dark",
+    "navbar_fixed": True,
     "navbar_small_text": True,
     "footer_small_text": True,
-    "sidebar_fixed": True,
+    "footer_fixed": False,
+    "sidebar": "sidebar-dark-primary",
     "sidebar_nav_small_text": True,
-    "sidebar_dark": True,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": True,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": True,
+    "sidebar_fixed": True,
     "brand_small_text": False,
+    "brand_colour": "navbar-primary",
     "actions_sticky_top": True,
-    "dark_mode_theme": None,
+    "body_small_text": False,
 }
+
+ADMIN_SITE_HEADER = "RPNGC Recruitment Admin"
+ADMIN_SITE_TITLE = "RPNGC Admin Portal"
+ADMIN_INDEX_TITLE = "Welcome to RPNGC Recruitment Administration"
+
+# ----------------------- Cookies / Session -----------------------
+# Use secure cookies only in production (HTTPS). Render apps are HTTPS by default.
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Strict"
+CSRF_COOKIE_SAMESITE = "Strict"
+
+# Session timeout (30 minutes of inactivity)
+SESSION_COOKIE_AGE = 1800
+SESSION_SAVE_EVERY_REQUEST = True
+
+# ==================== Optional: Custom Admin Site (unchanged) ====================
+"""
+# In your recruitment/admin.py or a separate admin_site.py:
+
+from django.contrib.admin import AdminSite
+from django.utils.translation import gettext_lazy as _
+
+class RPNGCAdminSite(AdminSite):
+    site_header = _('RPNGC Recruitment Administration')
+    site_title = _('RPNGC Admin Portal')
+    index_title = _('Dashboard')
+    
+    def each_context(self, request):
+        context = super().each_context(request)
+        context.update({
+            'custom_dashboard_data': self.get_dashboard_data(request),
+        })
+        return context
+    
+    def get_dashboard_data(self, request):
+        from recruitment.models import Application
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        today = timezone.now().date()
+        week_ago = today - timedelta(days=7)
+        
+        return {
+            'total_applications': Application.objects.count(),
+            'pending_applications': Application.objects.filter(status='pending').count(),
+            'applications_this_week': Application.objects.filter(
+                created_at__gte=week_ago
+            ).count(),
+        }
+
+rpngc_admin_site = RPNGCAdminSite(name='rpngc_admin')
+"""

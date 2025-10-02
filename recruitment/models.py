@@ -1,3 +1,4 @@
+# recruitment/models.py
 from __future__ import annotations
 
 from datetime import date
@@ -61,8 +62,6 @@ class District(models.Model):
 def applicant_photo_path(instance: "ApplicantProfile", filename: str) -> str:
     return f"applicants/{instance.user_id}/photo/{filename}"
 
-def document_upload_path(instance: "Document", filename: str) -> str:
-    return f"applicants/{instance.applicant_id}/docs/{instance.doc_type}/{filename}"
 
 class ApplicantProfile(models.Model):
     class Gender(models.TextChoices):
@@ -120,42 +119,6 @@ class ApplicantProfile(models.Model):
         return today.year - self.dob.year - ((today.month, today.day) < (self.dob.month, self.dob.day))
 
     def __str__(self): return f"{self.full_name} ({self.user.username})"
-
-
-class Document(models.Model):
-    class DocType(models.TextChoices):
-        G12_CERT = "G12_CERT", "Grade 12 Certificate"
-        BIRTH_CERT = "BIRTH_CERT", "Birth Certificate"
-        NID_PASSPORT = "NID_PASSPORT", "NID/Passport"
-        MED_CLEAR = "MED_CLEAR", "Medical Clearance"
-        POL_CLEAR = "POL_CLEAR", "Police Clearance"
-        CHAR_REF = "CHAR_REF", "Character Reference"
-        TERTIARY = "TERTIARY", "Tertiary Qualification"
-
-    class VerifyStatus(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        APPROVED = "APPROVED", "Approved"
-        REJECTED = "REJECTED", "Rejected"
-
-    applicant = models.ForeignKey(ApplicantProfile, on_delete=models.CASCADE, related_name="documents")
-    doc_type = models.CharField(max_length=20, choices=DocType.choices, db_index=True)
-    file = models.FileField(
-        upload_to=document_upload_path,
-        validators=[FileExtensionValidator(allowed_extensions=["pdf", "jpg", "jpeg", "png"])],
-    )
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    verify_status = models.CharField(max_length=10, choices=VerifyStatus.choices, default=VerifyStatus.PENDING)
-    verified_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="verified_documents"
-    )
-    verification_note = models.TextField(blank=True)
-
-    class Meta:
-        unique_together = ("applicant", "doc_type")
-        indexes = [models.Index(fields=["doc_type", "verify_status"])]
-        db_table = "applicant_documents"
-
-    def __str__(self): return f"{self.get_doc_type_display()} - {self.applicant}"
 
 
 # ---------------------------------------------------------------------
@@ -222,6 +185,11 @@ class EligibilityCheck(models.Model):
 # ---------------------------------------------------------------------
 # Applications & Screening
 # ---------------------------------------------------------------------
+def document_upload_path(instance: "Document", filename: str) -> str:
+    # Store docs by application
+    return f"applications/{instance.application_id}/docs/{instance.doc_type}/{filename}"
+
+
 class Application(models.Model):
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
@@ -239,6 +207,14 @@ class Application(models.Model):
     applicant = models.ForeignKey(ApplicantProfile, on_delete=models.CASCADE, related_name="applications")
     cycle = models.ForeignKey(RecruitmentCycle, on_delete=models.CASCADE, related_name="applications")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
+
+    rec_type = models.CharField(
+        max_length=10,
+        choices=RecruitmentCycle.RecType.choices,
+        default=RecruitmentCycle.RecType.REGULAR,
+        db_index=True,
+        help_text="Chosen recruitment stream; must match the selected cycle."
+    )
 
     applied_unit = models.CharField(max_length=120, blank=True)
 
@@ -269,6 +245,7 @@ class Application(models.Model):
         indexes = [
             models.Index(fields=["cycle", "status"]),
             models.Index(fields=["cycle", "total_score"]),
+            models.Index(fields=["rec_type"]),
         ]
         ordering = ["-total_score", "id"]
         db_table = "applications"
@@ -277,9 +254,13 @@ class Application(models.Model):
 
     def recalc_total(self, save: bool = True):
         self.total_score = (self.auto_screen_score or 0) + (self.manual_adjustment or 0) + \
-                           (self.test_score or 0) + (self.interview_score or 0)
+                        (self.test_score or 0) + (self.interview_score or 0)
         if save:
             self.save(update_fields=["total_score"])
+
+    def clean(self):
+        if self.cycle and self.rec_type and self.cycle.rec_type != self.rec_type:
+            raise ValidationError({"rec_type": "Recruitment type must match the selected cycle’s type."})
 
 
 class ApplicationEligibility(EligibilityCheck):
@@ -332,6 +313,7 @@ class Question(models.Model):
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="questions")
     text = models.TextField()
     points = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("1.00"))
+
     order = models.PositiveIntegerField(default=0, db_index=True)
 
     class Meta:
@@ -421,6 +403,7 @@ class InterviewScore(models.Model):
 def offer_letter_path(instance: "FinalSelection", filename: str) -> str:
     return f"offers/{instance.application_id}/{filename}"
 
+
 class FinalSelection(models.Model):
     application = models.OneToOneField(Application, on_delete=models.CASCADE, related_name="final_selection")
     rank = models.PositiveIntegerField(db_index=True)
@@ -494,13 +477,19 @@ class AuditLog(models.Model):
 
 # ---------- Extended applicant details ----------
 class AlternativeContact(models.Model):
-    applicant = models.OneToOneField("ApplicantProfile", on_delete=models.CASCADE, related_name="alt_contact")
+    # Enforced non-null relation to Application (OneToOne)
+    application = models.OneToOneField(
+        "Application",
+        on_delete=models.CASCADE,
+        related_name="alt_contact",
+    )
     name = models.CharField(max_length=150)
     relationship = models.CharField(max_length=80, blank=True)
     phone = models.CharField(max_length=30, blank=True)
     address = models.TextField(blank=True)
 
-    class Meta: db_table = "applicant_alt_contact"
+    class Meta:
+        db_table = "applicant_alt_contact"
 
 
 class ParentGuardian(models.Model):
@@ -530,7 +519,11 @@ class EducationRecord(models.Model):
         BACHELOR = "BACHELOR", "Bachelor"
         POSTGRAD = "POSTGRAD", "Postgraduate"
 
-    applicant = models.ForeignKey("ApplicantProfile", on_delete=models.CASCADE, related_name="education")
+    application = models.ForeignKey(
+        "Application",
+        on_delete=models.CASCADE,
+        related_name="education",
+    )
     level = models.CharField(max_length=12, choices=Level.choices)
     institution = models.CharField(max_length=200, blank=True)
     province = models.ForeignKey(Province, on_delete=models.SET_NULL, null=True, blank=True)
@@ -549,7 +542,11 @@ class EducationRecord(models.Model):
 
 
 class WorkHistory(models.Model):
-    applicant = models.ForeignKey("ApplicantProfile", on_delete=models.CASCADE, related_name="work_history")
+    application = models.ForeignKey(
+        "Application",
+        on_delete=models.CASCADE,
+        related_name="work_history",
+    )
     employer = models.CharField(max_length=200)
     position = models.CharField(max_length=120, blank=True)
     start_date = models.DateField(null=True, blank=True)
@@ -562,15 +559,60 @@ class WorkHistory(models.Model):
 
 
 class Reference(models.Model):
-    applicant = models.ForeignKey("ApplicantProfile", on_delete=models.CASCADE, related_name="references")
+    application = models.ForeignKey(
+        "Application",
+        on_delete=models.CASCADE,
+        related_name="references",
+    )
     name = models.CharField(max_length=150)
     position_title = models.CharField(max_length=120, blank=True)
     phone_number = models.CharField(max_length=50, blank=True)
     email = models.EmailField(blank=True)
 
-    class Meta: db_table = "applicant_references"
+    class Meta:
+        db_table = "applicant_references"
 
     def __str__(self): return f"{self.name} ({self.position_title})"
+
+
+class Document(models.Model):
+    class DocType(models.TextChoices):
+        G12_CERT = "G12_CERT", "Grade 12 Certificate"
+        BIRTH_CERT = "BIRTH_CERT", "Birth Certificate"
+        NID_PASSPORT = "NID_PASSPORT", "NID/Passport"
+        MED_CLEAR = "MED_CLEAR", "Medical Clearance"
+        POL_CLEAR = "POL_CLEAR", "Police Clearance"
+        CHAR_REF = "CHAR_REF", "Character Reference"
+        TERTIARY = "TERTIARY", "Tertiary Qualification"
+
+    class VerifyStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
+
+    application = models.ForeignKey(
+        "Application",
+        on_delete=models.CASCADE,
+        related_name="documents",
+    )
+    doc_type = models.CharField(max_length=20, choices=DocType.choices, db_index=True)
+    file = models.FileField(
+        upload_to=document_upload_path,
+        validators=[FileExtensionValidator(allowed_extensions=["pdf", "jpg", "jpeg", "png"])],
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    verify_status = models.CharField(max_length=10, choices=VerifyStatus.choices, default=VerifyStatus.PENDING)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="verified_documents"
+    )
+    verification_note = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ("application", "doc_type")
+        indexes = [models.Index(fields=["doc_type", "verify_status"])]
+        db_table = "applicant_documents"
+
+    def __str__(self): return f"{self.get_doc_type_display()} - App#{self.application_id}"
 
 
 # ---------------------------------------------------------------------
@@ -584,10 +626,17 @@ def run_automated_eligibility(application: Application) -> "ApplicationEligibili
     education_ok = prof.highest_education_level >= cycle.min_education_level
 
     def has_ok(doc_type: str) -> bool:
+        doc = application.documents.filter(doc_type=doc_type, verify_status=Document.VerifyStatus.APPROVED).first()
+        if doc:
+            return True
+        # legacy/profile fallback (kept defensive; returns False if no legacy relation exists)
         try:
-            d = prof.documents.get(doc_type=doc_type)
-            return d.verify_status == Document.VerifyStatus.APPROVED
-        except Document.DoesNotExist:
+            old = getattr(prof, "documents", None)
+            if old:
+                old_doc = old.get(doc_type=doc_type)
+                return old_doc.verify_status == Document.VerifyStatus.APPROVED
+            return False
+        except Exception:
             return False
 
     medical_ok = has_ok(Document.DocType.MED_CLEAR)

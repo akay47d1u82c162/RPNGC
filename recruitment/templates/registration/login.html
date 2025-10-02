@@ -23,7 +23,7 @@
       {% csrf_token %}
 
       <div class="field">
-        <label for="id_username">Username or Email</label>
+        <label for="{{ form.username.id_for_label }}">Username or Email</label>
         {{ form.username }}
         {% for e in form.username.errors %}
           <div class="error">{{ e }}</div>
@@ -31,12 +31,24 @@
       </div>
 
       <div class="field">
-        <label for="id_password">Password</label>
+        <label for="{{ form.password.id_for_label }}">Password</label>
         {{ form.password }}
         {% for e in form.password.errors %}
           <div class="error">{{ e }}</div>
         {% endfor %}
       </div>
+
+      {# Role-based dropdown (shown only if the form provides it) #}
+      {% if form.login_as %}
+      <div class="field">
+        <label for="{{ form.login_as.id_for_label }}">Sign in as</label>
+        {{ form.login_as }}
+        {% for e in form.login_as.errors %}
+          <div class="error">{{ e }}</div>
+        {% endfor %}
+        <div class="muted" style="margin-top:6px">Choose “Auto” if you’re not sure.</div>
+      </div>
+      {% endif %}
 
       <button class="btn primary" type="submit">Sign in</button>
     </form>

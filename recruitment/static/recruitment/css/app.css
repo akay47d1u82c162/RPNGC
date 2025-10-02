@@ -1,38 +1,206 @@
-/* recruitment/static/recruitment/css/app.css */
+/* ==========================================================================
+   RPNGC Custom Admin — Police Branding + Layout
+   Scoped to /admin_site/ via the rpngc-admin class added by admin_overrides.js
+   ========================================================================== */
 
-/* Layout helpers */
-.wrap{max-width:1100px;margin:0 auto;padding:24px}
-.row{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-.muted{color:#9ca3af}
+/* ---------- Theme variables (police blue + gold) ---------- */
+body.rpngc-admin {
+  --police-blue: #0d47a1;
+  --police-blue-600: #1453b5;
+  --police-blue-dark: #0a357a;
+  --police-gold: #ffc107;
+  --ink-900: #111827;
+  --ink-700: #374151;
+  --ink-500: #6b7280;
+  --ink-300: #d1d5db;
+  --bg-50: #f8fafc;
+  --bg-100: #f3f4f6;
+
+  /* Bootstrap compat vars so Jazzmin/AdminLTE picks them up */
+  --bs-primary: var(--police-blue);
+  --bs-primary-rgb: 13, 71, 161;
+  --bs-link-color: var(--police-blue);
+  --bs-link-hover-color: var(--police-blue-dark);
+}
+
+/* ---------- Remove sidebar; full-width content ---------- */
+body.rpngc-admin .main-sidebar { display: none !important; }
+body.rpngc-admin .brand-link   { display: none !important; }
+body.rpngc-admin .content-wrapper,
+body.rpngc-admin .main-header,
+body.rpngc-admin .main-footer  { margin-left: 0 !important; }
+
+/* Hide hamburger (sidebar toggle) */
+body.rpngc-admin a.nav-link[data-widget="pushmenu"] { display: none !important; }
+
+/* ---------- Navbar branding + icon-only “Recruitment” menu ---------- */
+body.rpngc-admin .main-header.navbar {
+  background: var(--police-blue) !important;
+  width: 100% !important;
+  border-bottom: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+
+body.rpngc-admin .navbar .navbar-nav .nav-link { color: #fff !important; }
+
+/* Left badge next to the menu (replace with your own logo) */
+body.rpngc-admin .main-header .navbar::before {
+  content: "";
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  margin: 0 .5rem 0 .25rem;
+  vertical-align: middle;
+  background-image: url("/static/recruitment/images/logo.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* Make the Recruitment top menu icon-only (JS removes the text) */
+body.rpngc-admin .rpngc-icon-recruitment::before {
+  content: "";
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
+  background-image: url("/static/recruitment/images/logo.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* Compact top nav spacing */
+body.rpngc-admin .navbar-nav > .nav-item > .nav-link {
+  padding-top: .5rem;
+  padding-bottom: .5rem;
+}
+
+/* Dropdown menu styling */
+body.rpngc-admin .dropdown-menu {
+  border-radius: .5rem;
+  border: 1px solid rgba(13, 71, 161, .15);
+  box-shadow: 0 10px 24px rgba(0,0,0,.12);
+}
+body.rpngc-admin .dropdown-item:active,
+body.rpngc-admin .dropdown-item:focus,
+body.rpngc-admin .dropdown-item:hover {
+  background: rgba(13, 71, 161, .08);
+}
+
+/* ---------- Dashboard layout polishing ---------- */
+.rpngc-dashboard {
+  padding-top: .5rem;
+}
 
 /* Cards */
-.cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.card{
-  background:#0b1220;border:1px solid #1f2937;border-radius:14px;
-  padding:16px;color:#e5e7eb;
-  box-shadow:0 2px 10px rgba(0,0,0,.15)
+body.rpngc-admin .card {
+  border: 1px solid rgba(17, 24, 39, .06);
+  border-radius: .75rem;
 }
-.card.metric .label{font-size:12px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em}
-.card.metric .value{font-size:28px;font-weight:700;margin-top:4px}
+body.rpngc-admin .card-header {
+  background: #fff;
+  border-bottom: 1px solid rgba(17, 24, 39, .06);
+  border-radius: .75rem .75rem 0 0;
+  padding: .75rem 1rem;
+}
+body.rpngc-admin .card-primary.card-outline {
+  border-top: 3px solid var(--police-blue) !important;
+}
 
-/* Table */
-.table{width:100%;border-collapse:collapse}
-.table th,.table td{padding:8px;border-bottom:1px solid #1f2937;text-align:left}
-.table th{color:#a5b4fc;font-weight:600}
+/* KPI cards */
+body.rpngc-admin .display-6 {
+  font-weight: 700;
+  color: var(--ink-900);
+}
+body.rpngc-admin .card .text-muted.small {
+  color: var(--ink-500) !important;
+}
 
-/* Buttons */
-.btn{display:inline-block;padding:8px 14px;border:1px solid #334155;border-radius:10px;text-decoration:none;color:#e5e7eb}
-.btn:hover{background:#0f172a}
-.btn.primary{background:#14532d;border-color:#14532d;color:#fff}
-.btn.small{padding:6px 10px;font-size:13px;border-radius:8px}
+/* Buttons (primary + outlines) */
+body.rpngc-admin .btn-primary {
+  background-color: var(--police-blue) !important;
+  border-color: var(--police-blue-dark) !important;
+}
+body.rpngc-admin .btn-primary:hover {
+  background-color: var(--police-blue-600) !important;
+}
+body.rpngc-admin .btn-outline-primary {
+  color: var(--police-blue) !important;
+  border-color: var(--police-blue) !important;
+}
+body.rpngc-admin .btn-outline-primary:hover {
+  background-color: var(--police-blue) !important;
+  color: #fff !important;
+}
 
-/* Top bar */
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:36px;height:36px;display:grid;place-items:center;border-radius:8px;background:#111827;border:1px solid #1f2937}
-.subtitle{font-size:13px;color:#9ca3af}
+/* Extra-small utility button (for filter shortcuts) */
+body.rpngc-admin .btn.btn-xs {
+  --pad-y: .125rem; --pad-x: .5rem;
+  padding: var(--pad-y) var(--pad-x);
+  font-size: .75rem;
+  line-height: 1.15;
+  border-radius: .35rem;
+}
 
-/* Messages */
-.messages{margin:10px 0}
-.messages .success{border-left:4px solid #16a34a}
-.messages .error{border-left:4px solid #b91c1c}
+/* Quick Links grouping */
+body.rpngc-admin .rpngc-dashboard h6.text-muted {
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--ink-700) !important;
+}
+
+/* Keep equal spacing between Quick Link buttons */
+body.rpngc-admin .rpngc-dashboard .gap-2 > a,
+body.rpngc-admin .rpngc-dashboard .gap-2 > .btn {
+  margin-right: .25rem;
+  margin-bottom: .25rem;
+}
+
+/* Tables – subtle zebra + tight rows */
+body.rpngc-admin table.table {
+  margin-bottom: 0;
+}
+body.rpngc-admin table.table thead th {
+  border-top: 0 !important;
+  border-bottom: 1px solid var(--bg-100);
+  color: var(--ink-700);
+  font-weight: 600;
+}
+body.rpngc-admin table.table tbody tr:nth-child(odd) {
+  background-color: var(--bg-50);
+}
+body.rpngc-admin table.table td,
+body.rpngc-admin table.table th {
+  padding: .5rem .75rem;
+}
+
+/* Links */
+body.rpngc-admin a { color: var(--police-blue); }
+body.rpngc-admin a:hover { color: var(--police-blue-dark); }
+
+/* ---------- Forms & admin pages polish ---------- */
+body.rpngc-admin .form-control:focus,
+body.rpngc-admin .select2-container--default .select2-selection--single:focus {
+  border-color: var(--police-blue);
+  box-shadow: 0 0 0 .2rem rgba(13, 71, 161, .15);
+}
+
+/* Inline related modals (Jazzmin) */
+body.rpngc-admin .modal-content {
+  border-radius: .75rem;
+  border: 1px solid rgba(17, 24, 39, .08);
+}
+
+/* ---------- Login page tweaks (if using custom login under this skin) ---------- */
+body.rpngc-admin .login-logo img { max-height: 72px; }
+
+/* ---------- Responsive tweaks ---------- */
+@media (max-width: 1199.98px) {
+  /* Stack Quick Links groups better on md/lg */
+  body.rpngc-admin .rpngc-dashboard .col-xl-3 { margin-bottom: .75rem; }
+}
+@media (max-width: 767.98px) {
+  /* Tighter cards on mobile */
+  body.rpngc-admin .card-header { padding: .5rem .75rem; }
+  body.rpngc-admin .card-body   { padding: .75rem; }
+  body.rpngc-admin .navbar .navbar-nav .nav-link { padding: .4rem .5rem; }
+}

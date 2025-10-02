@@ -1,39 +1,560 @@
-/* Floating toggle button */
-.action-menu-toggle{
+/* -------------------------------------------------------
+   RPNGC · Admin Dashboard Overrides
+   Glassmorphic Police Branding Theme
+   File: static/recruitment/css/admin_overrides.css
+   ------------------------------------------------------- */
+
+:root {
+  /* Police Brand Colors */
+  --police-navy: #0a2a4d;
+  --police-blue: #0f3b6d;
+  --police-light: #2563eb;
+  --police-accent: #3b82f6;
+  --police-gold: #fbbf24;
+  
+  /* Glass Morphism */
+  --glass-bg: rgba(15, 59, 109, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(10, 42, 77, 0.37);
+  --glass-blur: blur(12px);
+  
+  /* Dark Glass */
+  --glass-dark: rgba(10, 42, 77, 0.85);
+  --glass-darker: rgba(10, 42, 77, 0.95);
+  
+  /* Accents */
+  --badge-glass: rgba(59, 130, 246, 0.2);
+  --hover-glass: rgba(59, 130, 246, 0.15);
+  --active-glass: rgba(59, 130, 246, 0.25);
+}
+
+/* ==================== Body & Background ==================== */
+body {
+  background: linear-gradient(135deg, #0a2a4d 0%, #0f3b6d 50%, #1e40af 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
   position: fixed;
-  bottom: 24px; right: 24px;
-  z-index: 10010;
-  width: 48px; height: 48px; border-radius: 50%;
-  border: none; background: #0b5fff; color: #fff;
-  box-shadow: 0 6px 16px rgba(0,0,0,.2);
-  display: grid; place-items: center;
-  cursor: pointer; transition: transform .15s, background .15s;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(37, 99, 235, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
-.action-menu-toggle:hover{ transform: translateY(-1px); background:#0a53e3; }
 
-/* Sidebar */
-.action-menu-sidebar{
-  position: fixed; top:0; right:-320px; height:100vh; width:320px;
-  z-index: 10009; background:#fff; border-left:1px solid #e5e7eb;
-  box-shadow: -10px 0 24px rgba(0,0,0,.08); padding:16px; overflow-y:auto;
-  transition: right .2s ease;
+/* ==================== Sidebar ==================== */
+.main-sidebar {
+  background: var(--glass-dark) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
-.action-menu-sidebar.open{ right:0; }
-.action-menu-sidebar h4{ margin:0 0 12px; font-size:16px; font-weight:600; display:flex; gap:8px; align-items:center; }
 
-/* Buttons inside sidebar */
-.action-button{
-  display:inline-flex; align-items:center; gap:10px;
-  width:100%; padding:10px 12px; margin:6px 0;
-  background:#f3f4f6; border:1px solid #e5e7eb; color:#111827;
-  border-radius:8px; text-decoration:none; cursor:pointer;
-  transition: background .15s ease, border-color .15s ease;
+/* Brand Logo Area */
+.brand-link {
+  background: var(--glass-darker) !important;
+  border-bottom: 1px solid var(--glass-border);
+  padding: 1rem !important;
+  transition: all 0.3s ease;
 }
-.action-button:hover{ background:#e9ecf1; border-color:#d7dbe2; }
-.ico-fallback{ width:1.25em; text-align:center; display:inline-block; }
 
-/* Shift main area when menu opens */
-.content-wrapper.menu-open, #content.menu-open{ margin-right:320px; transition: margin-right .2s; }
+.brand-link:hover {
+  background: rgba(10, 42, 77, 0.98) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
 
-/* Wider selects for list_editable */
-.change-list table select{ min-width:10rem; }
+.brand-image {
+  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.brand-link:hover .brand-image {
+  transform: scale(1.05);
+}
+
+.brand-text {
+  color: #fff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+/* Sidebar Navigation */
+.nav-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-radius: 8px;
+  margin: 4px 8px;
+  padding: 10px 14px !important;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.nav-sidebar .nav-link:hover {
+  background: var(--hover-glass) !important;
+  color: #fff !important;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.nav-sidebar .nav-link.active,
+.nav-sidebar .nav-link.active:hover {
+  background: var(--active-glass) !important;
+  color: #fff !important;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border-left: 3px solid var(--police-gold);
+}
+
+.nav-sidebar .nav-icon {
+  color: rgba(255, 255, 255, 0.9) !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.nav-sidebar .nav-link.active .nav-icon {
+  color: var(--police-gold) !important;
+}
+
+/* Sidebar Headers */
+.nav-header {
+  color: rgba(255, 255, 255, 0.6) !important;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-top: 1rem;
+  padding: 8px 16px;
+}
+
+/* ==================== Top Navbar ==================== */
+.main-header {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 4px 16px rgba(10, 42, 77, 0.2);
+}
+
+.navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: all 0.2s ease;
+  padding: 8px 12px !important;
+  border-radius: 6px;
+  margin: 0 2px;
+}
+
+.navbar-nav .nav-link:hover {
+  background: var(--hover-glass) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+}
+
+/* Dropdown Menus */
+.dropdown-menu {
+  background: var(--glass-darker) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  color: rgba(255, 255, 255, 0.85) !important;
+  transition: all 0.2s ease;
+  padding: 10px 16px;
+}
+
+.dropdown-item:hover {
+  background: var(--hover-glass) !important;
+  color: #fff !important;
+}
+
+.dropdown-divider {
+  border-color: var(--glass-border);
+}
+
+/* ==================== Main Content Area ==================== */
+.content-wrapper {
+  background: transparent !important;
+  padding-bottom: 2rem;
+}
+
+.content-header {
+  padding: 1.5rem 1rem;
+}
+
+.content-header h1 {
+  color: #fff !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.breadcrumb {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 2px 8px rgba(10, 42, 77, 0.2);
+}
+
+.breadcrumb-item,
+.breadcrumb-item a {
+  color: rgba(255, 255, 255, 0.85) !important;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-item.active {
+  color: var(--police-gold) !important;
+  font-weight: 600;
+}
+
+.breadcrumb-item a:hover {
+  color: #fff !important;
+}
+
+/* ==================== Cards & Panels ==================== */
+.card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--glass-shadow) !important;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.card-header {
+  background: rgba(10, 42, 77, 0.4) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  color: #fff !important;
+  font-weight: 600;
+  padding: 1rem 1.25rem;
+}
+
+.card-title {
+  color: #fff !important;
+  font-weight: 700 !important;
+  margin: 0;
+}
+
+.card-body {
+  color: rgba(255, 255, 255, 0.9);
+  padding: 1.25rem;
+}
+
+.card-footer {
+  background: rgba(10, 42, 77, 0.3) !important;
+  border-top: 1px solid var(--glass-border) !important;
+  padding: 1rem 1.25rem;
+}
+
+/* Small Info Boxes */
+.small-box {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--glass-shadow);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.small-box:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(10, 42, 77, 0.5);
+}
+
+.small-box .inner h3,
+.small-box .inner p {
+  color: #fff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.small-box .icon {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.small-box-footer {
+  background: rgba(10, 42, 77, 0.4) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* ==================== Tables ==================== */
+.table-wrapper {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+}
+
+.table {
+  color: rgba(255, 255, 255, 0.9) !important;
+  margin-bottom: 0;
+}
+
+.table thead th {
+  background: rgba(10, 42, 77, 0.6) !important;
+  color: #fff !important;
+  border-color: var(--glass-border) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  padding: 1rem;
+}
+
+.table tbody tr {
+  border-color: var(--glass-border) !important;
+  transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.table tbody td {
+  border-color: var(--glass-border) !important;
+  padding: 0.9rem 1rem;
+}
+
+/* ==================== Forms ==================== */
+.form-control {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: #fff !important;
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: var(--police-accent) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  color: #fff !important;
+}
+
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.form-label,
+label {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.help-text,
+.text-muted {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+select.form-control {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+}
+
+/* ==================== Buttons ==================== */
+.btn-primary {
+  background: linear-gradient(135deg, var(--police-blue) 0%, var(--police-light) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 8px 20px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.btn-info {
+  background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, var(--police-gold) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: var(--police-navy) !important;
+  font-weight: 700;
+}
+
+/* ==================== Badges & Labels ==================== */
+.badge {
+  background: var(--badge-glass) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  padding: 6px 12px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.badge-primary {
+  background: rgba(59, 130, 246, 0.3) !important;
+  color: #fff !important;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.3) !important;
+  color: #fff !important;
+}
+
+.badge-danger {
+  background: rgba(220, 38, 38, 0.3) !important;
+  color: #fff !important;
+}
+
+.badge-warning {
+  background: rgba(251, 191, 36, 0.3) !important;
+  color: #fff !important;
+}
+
+/* ==================== Alerts ==================== */
+.alert {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.95) !important;
+  border-left-width: 4px !important;
+}
+
+.alert-success {
+  border-left-color: #10b981 !important;
+}
+
+.alert-danger {
+  border-left-color: #ef4444 !important;
+}
+
+.alert-warning {
+  border-left-color: var(--police-gold) !important;
+}
+
+.alert-info {
+  border-left-color: var(--police-accent) !important;
+}
+
+/* ==================== Footer ==================== */
+.main-footer {
+  background: var(--glass-dark) !important;
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
+  color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 -4px 16px rgba(10, 42, 77, 0.2);
+}
+
+.main-footer a {
+  color: var(--police-accent) !important;
+  transition: color 0.2s ease;
+}
+
+.main-footer a:hover {
+  color: var(--police-light) !important;
+}
+
+/* ==================== Login Page ==================== */
+.login-page {
+  background: linear-gradient(135deg, #0a2a4d 0%, #0f3b6d 50%, #1e40af 100%);
+  background-attachment: fixed;
+}
+
+.login-box {
+  backdrop-filter: var(--glass-blur);
+}
+
+.login-card-body,
+.register-card-body {
+  background: var(--glass-darker) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  color: #fff;
+}
+
+.login-logo,
+.register-logo {
+  color: #fff !important;
+  font-weight: 700;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ==================== Scrollbar ==================== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 42, 77, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 5px;
+  border: 2px solid rgba(10, 42, 77, 0.3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
+
+/* ==================== Pagination ==================== */
+.pagination .page-link {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(8px);
+  margin: 0 2px;
+  border-radius: 6px;
+}
+
+.pagination .page-link:hover {
+  background: var(--hover-glass) !important;
+  color: #fff !important;
+}
+
+.pagination .page-item.active .page-link {
+  background: var(--active-glass) !important;
+  border-color: var(--police-accent) !important;
+  font-weight: 700;
+}
+
+/* ==================== Responsive ==================== */
+@media (max-width: 768px) {
+  .main-sidebar {
+    backdrop-filter: blur(20px);
+    background: rgba(10, 42, 77, 0.98) !important;
+  }
+}

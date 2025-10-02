@@ -1,624 +1,502 @@
+# recruitment/views.py
 from __future__ import annotations
 
 from datetime import date
-from django.conf import settings
+from functools import wraps
+from typing import Optional, Dict, Any
+
+from django import forms
 from django.contrib import messages
-from django.contrib.auth import login as auth_login
+from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.views import LoginView
-from django.core.files.images import get_image_dimensions
+from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render, redirect, resolve_url
-from django.template.loader import render_to_string
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .models import (
-    User,
     ApplicantProfile,
-    RecruitmentCycle,
     Application,
-    Document,
+    RecruitmentCycle,
+    InterviewSchedule,
     Notification,
+    ScreeningAction,
+    Test,
+    ApplicationEligibility,
+    run_automated_eligibility,
 )
 
-try:
-    from .models import ScreeningAction
-except Exception:
-    ScreeningAction = None
-
 from .forms import (
-    ApplicantRegistrationForm,
+    RoleBasedLoginForm,
     ApplicantProfileForm,
     ApplicationForm,
     AlternativeContactFormSet,
-    ParentGuardianFormSet,
     EducationRecordFormSet,
-    WorkFormSet,
+    WorkHistoryFormSet,
     ReferenceFormSet,
-    DocumentUploadForm,
-    REQUIRED_DOC_TYPES,
 )
 
-# -------------------------------------------------------------------
-# Helpers
-# -------------------------------------------------------------------
-def _get_active_cycle() -> RecruitmentCycle | None:
-    return RecruitmentCycle.objects.filter(is_active=True).order_by("-start_date").first()
+# ------------------------- Guards & helpers ------------------------- #
 
-def role_default_url(user) -> str:
-    if not getattr(user, "is_authenticated", False):
-        return resolve_url(settings.LOGIN_URL)
-    role = getattr(user, "role", None)
-    if role == User.Roles.APPLICANT:
-        return reverse("recruitment:applicant_dashboard")
-    if role in (User.Roles.OFFICER, User.Roles.ADMIN):
-        return reverse("recruitment:staff_dashboard")
-    return reverse("recruitment:applicant_dashboard")
+def is_applicant(user) -> bool:
+    """True only for real applicants (non-staff) with an ApplicantProfile (and, if present, APPLICANT role)."""
+    # If you're staff/superuser, you're not an applicant.
+    if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
+        return False
+    # If you use a custom role enum, enforce it when available.
+    try:
+        Roles = user.__class__.Roles
+        if hasattr(Roles, "APPLICANT") and getattr(user, "role", None) != Roles.APPLICANT:
+            return False
+    except Exception:
+        pass
+    # Must have a linked profile to be treated as an applicant.
+    return hasattr(user, "profile")
 
-def _get_cycle_attr(cycle, *names):
-    if not cycle:
+def applicant_required(view_func):
+    """Deny staff/superusers (and non-applicants) from applicant pages; redirect to admin site."""
+    @wraps(view_func)
+    @login_required
+    def _wrapped(request: HttpRequest, *args, **kwargs):
+        if not is_applicant(request.user):
+            messages.error(request, "Staff users cannot access the applicant portal.")
+            return redirect("/admin_site/")
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
+def _as_local(dt):
+    if not dt:
         return None
-    for n in names:
-        v = getattr(cycle, n, None)
-        if v:
-            return str(v)
-    return None
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_default_timezone())
+    return timezone.localtime(dt)
 
-def _cycle_label(cycle) -> str:
-    return _get_cycle_attr(cycle, "name", "title", "label") or (str(cycle) if cycle else "—")
+def _fit_field(model_cls, field_name: str, value):
+    try:
+        field = model_cls._meta.get_field(field_name)
+        max_len = getattr(field, "max_length", None)
+        if max_len and isinstance(value, str) and len(value) > max_len:
+            return value[:max_len]
+    except Exception:
+        pass
+    return value
 
-def _cycle_type(cycle) -> str | None:
-    return _get_cycle_attr(cycle, "recruitment_type", "type", "rec_type", "category")
+def _notify(user, title: str, body: str, ntype: str = "app_receipt"):
+    try:
+        kwargs = {"user": user}
+        if hasattr(Notification, "title"):
+            kwargs["title"] = _fit_field(Notification, "title", title)
+        if hasattr(Notification, "body"):
+            kwargs["body"] = body
+        if hasattr(Notification, "ntype"):
+            kwargs["ntype"] = _fit_field(Notification, "ntype", ntype)
+        if hasattr(Notification, "is_read"):
+            kwargs["is_read"] = False
+        with transaction.atomic():
+            Notification.objects.create(**kwargs)
+    except Exception:
+        pass
 
-# -------------------------------------------------------------------
-# Landing (public)
-# -------------------------------------------------------------------
-def landing(request):
+# ------------------------- Auth & Landing ------------------------- #
+
+class RoleBasedLoginView(LoginView):
+    """
+    Role-aware login: staff/superusers are ALWAYS sent to /admin_site/,
+    applicants to their dashboard. A 'Sign in as' dropdown is supported.
+    """
+    template_name = "registration/login.html"
+    authentication_form = RoleBasedLoginForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.setdefault("initial", {}).update({"login_as": self.request.session.get("login_as", "auto")})
+        return kwargs
+
+    def form_valid(self, form):
+        self.request.session["login_as"] = form.cleaned_data.get("login_as") or "auto"
+        return super().form_valid(form)
+
+    def get_success_url(self) -> str:
+        user = self.request.user
+        chosen = self.request.session.get("login_as") or "auto"
+
+        # Staff/superusers are restricted from applicant portal regardless of choice.
+        if user.is_staff or user.is_superuser:
+            return "/admin_site/"
+
+        # If user explicitly chose applicant, honor it (still non-staff).
+        if chosen == "applicant":
+            try:
+                return reverse("recruitment:applicant_dashboard")
+            except Exception:
+                return "/"
+
+        # Panel choice goes to admin site list (if available); else admin home.
+        if chosen == "panel":
+            try:
+                return reverse("rpngc_admin:recruitment_interviewschedule_changelist")
+            except Exception:
+                return "/admin_site/"
+
+        # Auto: real applicants → applicant dashboard; others → admin.
+        if is_applicant(user):
+            try:
+                return reverse("recruitment:applicant_dashboard")
+            except Exception:
+                return "/"
+        return "/admin_site/"
+
+def logout_view(request: HttpRequest) -> HttpResponse:
+    logout(request)
+    return redirect("recruitment:login")
+
+@require_GET
+def landing(request: HttpRequest) -> HttpResponse:
+    """Public landing page with role-aware redirect for authenticated users."""
+    if request.user.is_authenticated:
+        if request.user.is_staff or request.user.is_superuser:
+            return redirect("/admin_site/")
+        if is_applicant(request.user):
+            return redirect("recruitment:applicant_dashboard")
+        return redirect("/admin_site/")
     return render(request, "recruitment/landing.html")
 
-# -------------------------------------------------------------------
-# Auth (role-based)
-# -------------------------------------------------------------------
-class RoleBasedLoginView(LoginView):
-    template_name = "registration/login.html"
-    def get_success_url(self):
-        next_url = self.get_redirect_url()
-        if next_url and url_has_allowed_host_and_scheme(
-            url=next_url,
-            allowed_hosts={self.request.get_host()},
-            require_https=self.request.is_secure(),
-        ):
-            return next_url
-        return role_default_url(self.request.user)
-
-def register_view(request):
-    """Applicant self-registration; creates ApplicantProfile and logs in."""
-    if request.user.is_authenticated:
-        return redirect(role_default_url(request.user))
-
-    if request.method == "POST":
-        form = ApplicantRegistrationForm(request.POST, request.FILES)  # include FILES (photo)
-        if form.is_valid():
-            user = form.save()
-            auth_login(request, user)
-            messages.success(request, "Account created. Welcome!")
-            # Go straight to the application form (prefilled from profile)
-            return redirect("recruitment:application_form")
-        messages.error(request, "Please correct the errors below.")
-    else:
-        form = ApplicantRegistrationForm()
-
-    return render(request, "recruitment/register.html", {"form": form})
-
-# -------------------------------------------------------------------
-# Profile photo (collapsible menu upload)
-# -------------------------------------------------------------------
-@login_required
-@require_POST
-def profile_photo_update(request):
-    """
-    Update the applicant's profile photo from the collapsible menu.
-    Accepts multipart/form-data with field name 'photo'.
-    """
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-    file = request.FILES.get("photo")
-    if not file:
-        messages.error(request, "No image selected.")
-        return redirect(request.META.get("HTTP_REFERER", reverse("recruitment:applicant_dashboard")))
-    try:
-        get_image_dimensions(file)  # raises if not image
-    except Exception:
-        messages.error(request, "Please upload a valid image.")
-        return redirect(request.META.get("HTTP_REFERER", reverse("recruitment:applicant_dashboard")))
-
-    profile.photo = file
-    profile.save(update_fields=["photo"])
-
-    if Notification:
-        try:
-            Notification.objects.create(
-                user=request.user,
-                ntype=getattr(Notification, "Type", None).INFO if hasattr(Notification, "Type") else "INFO",
-                title="Profile photo updated",
-                body="Your profile picture has been changed successfully.",
-            )
-        except Exception:
-            pass
-
-    messages.success(request, "Profile photo updated.")
-    return redirect(request.META.get("HTTP_REFERER", reverse("recruitment:applicant_dashboard")))
-
-# -------------------------------------------------------------------
-# Applicant Dashboard
-# -------------------------------------------------------------------
-@login_required
-def applicant_dashboard(request):
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-
-    app = (
-        Application.objects.filter(applicant=profile)
-        .select_related("cycle")
-        .order_by("-submitted_at", "-id")
-        .first()
+class RegistrationForm(UserCreationForm):
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "placeholder": "you@example.com"})
     )
 
-    # Notifications: normalize to common 'read' boolean
-    unread_count = 0
-    notices = []
-    if Notification:
-        qs = Notification.objects.filter(user=request.user).order_by("-created_at")
-        if hasattr(Notification, "is_read"):
-            unread_count = qs.filter(is_read=False).count()
-        elif hasattr(Notification, "seen"):
-            unread_count = qs.filter(seen=False).count()
-        notices = [
-            {
-                "id": n.id,
-                "title": getattr(n, "title", "Notification"),
-                "body": getattr(n, "body", ""),
-                "created_at": n.created_at,
-                "read": bool(getattr(n, "is_read", getattr(n, "seen", False))),
-            }
-            for n in qs[:10]
-        ]
+    class Meta(UserCreationForm.Meta):
+        model = get_user_model()
+        fields = ("username", "email", "password1", "password2")
 
-    # Recent admin actions
-    actions = []
-    if ScreeningAction and app:
-        actions = list(
-            ScreeningAction.objects.filter(application=app)
-            .select_related("by_user")
-            .order_by("-created_at")[:10]
-        )
+    def clean_email(self):
+        UserModel = get_user_model()
+        email = self.cleaned_data["email"].strip().lower()
+        if UserModel.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
 
-    # Optional quick upload
-    if request.method == "POST" and request.POST.get("intent") == "upload_document":
-        doc_form = DocumentUploadForm(request.POST, request.FILES)
-        if doc_form.is_valid():
-            dtype = doc_form.cleaned_data["doc_type"]
-            file = doc_form.cleaned_data["file"]
-            Document.objects.update_or_create(
-                applicant=profile, doc_type=dtype, defaults={"file": file}
-            )
-            messages.success(request, "Document uploaded.")
-            return redirect("recruitment:applicant_dashboard")
+    def save(self, commit: bool = True):
+        UserModel = get_user_model()
+        user = super().save(commit=False)
+        user.email = self.cleaned_data["email"]
+        if hasattr(UserModel, "Roles"):
+            user.role = UserModel.Roles.APPLICANT
+        if commit:
+            user.save()
+        return user
+
+@require_http_methods(["GET", "POST"])
+def register(request: HttpRequest) -> HttpResponse:
+    if request.user.is_authenticated:
+        # Staff stays restricted from applicant portal
+        if request.user.is_staff or request.user.is_superuser:
+            return redirect("/admin_site/")
+        return redirect("recruitment:applicant_dashboard")
+
+    form = RegistrationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        login(request, user)
+        return redirect("recruitment:applicant_dashboard")
+    return render(request, "registration/register.html", {"form": form})
+
+# ------------------------- Applicant Portal ------------------------- #
+
+@applicant_required
+def applicant_dashboard(request: HttpRequest) -> HttpResponse:
+    user = request.user
+    profile: Optional[ApplicantProfile] = getattr(user, "profile", None)
+
+    application: Optional[Application] = None
+    if profile:
+        application = Application.objects.filter(applicant=profile).order_by("-submitted_at", "-id").first()
+
+    application_status_display = "—"
+    if application:
+        try:
+            application_status_display = application.get_status_display()
+        except Exception:
+            application_status_display = application.status or "—"
+
+    stats: Dict[str, Any] = {
+        "applications_count": Application.objects.filter(applicant=profile).count() if profile else 0,
+        "pending_count": Application.objects.filter(
+            applicant=profile, status__in=[Application.Status.PENDING, Application.Status.SCREENING]
+        ).count() if profile else 0,
+        "shortlisted_count": Application.objects.filter(
+            applicant=profile, status=Application.Status.SHORTLISTED
+        ).count() if profile else 0,
+        "tests_available": 0,
+        "upcoming_interviews": 0,
+    }
+
+    now = timezone.now()
+    if application:
+        stats["tests_available"] = Test.objects.filter(
+            cycle=application.cycle, is_published=True, opens_at__lte=now, closes_at__gte=now
+        ).count()
+        stats["upcoming_interviews"] = InterviewSchedule.objects.filter(
+            application__applicant=profile, scheduled_at__gte=now
+        ).count()
     else:
-        doc_form = DocumentUploadForm()
+        active = RecruitmentCycle.objects.filter(is_active=True).order_by("-start_date").first()
+        if active:
+            stats["tests_available"] = Test.objects.filter(
+                cycle=active, is_published=True, opens_at__lte=now, closes_at__gte=now
+            ).count()
+
+    notices_qs = Notification.objects.filter(user=user).order_by("-created_at")[:15]
+    notices = []
+    for n in notices_qs:
+        created_local = _as_local(getattr(n, "created_at", None))
+        notices.append({
+            "id": n.id,
+            "title": getattr(n, "title", None) or "Notification",
+            "body": getattr(n, "body", None) or "",
+            "created_at_str": created_local.strftime("%Y-%m-%d %H:%M") if created_local else "",
+            "read": getattr(n, "is_read", False),
+        })
+    unread_count = sum(1 for n in notices if not n["read"])
+
+    actions = []
+    if application:
+        actions = list(ScreeningAction.objects.filter(application=application).order_by("-created_at")[:10])
 
     ctx = {
         "profile": profile,
-        "application": app,
-        "actions": actions,
-        "notices": notices,          # list of dicts with 'read'
+        "application": application,
+        "application_status_display": application_status_display,
+        "stats": stats,
+        "notices": notices,
         "unread_count": unread_count,
-        "doc_form": doc_form,
-        "generated_at": timezone.now(),
+        "actions": actions,
     }
     return render(request, "recruitment/dashboard.html", ctx)
 
-# -------------------------------------------------------------------
-# Notifications (bell)
-# -------------------------------------------------------------------
-@login_required
-def notifications_list(request):
-    if not Notification:
-        return JsonResponse({"ok": False, "detail": "Notifications disabled"}, status=400)
-    qs = Notification.objects.filter(user=request.user).order_by("-created_at")[:30]
-    data = [
-        {
-            "id": n.id,
-            "title": getattr(n, "title", ""),
-            "body": getattr(n, "body", ""),
-            "created_at": n.created_at.strftime("%Y-%m-%d %H:%M"),
-            "is_read": bool(getattr(n, "is_read", getattr(n, "seen", False))),
-        }
-        for n in qs
-    ]
-    if request.headers.get("x-requested-with") == "XMLHttpRequest" or request.GET.get("format") == "json":
-        return JsonResponse({"ok": True, "items": data})
-    return render(request, "recruitment/notifications.html", {"items": data})
-
-@login_required
 @require_POST
-def notifications_mark_all_seen(request):
-    if not Notification:
-        return JsonResponse({"ok": False, "detail": "Notifications disabled"}, status=400)
-    if hasattr(Notification, "is_read"):
-        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-    elif hasattr(Notification, "seen"):
-        Notification.objects.filter(user=request.user, seen=False).update(seen=True)
-    return JsonResponse({"ok": True})
-
-@login_required
-@require_POST
-def notification_mark_seen(request, pk: int):
-    if not Notification:
-        return JsonResponse({"ok": False, "detail": "Notifications disabled"}, status=400)
-    n = get_object_or_404(Notification, pk=pk, user=request.user)
-    if hasattr(n, "is_read"):
-        n.is_read = True
-        n.save(update_fields=["is_read"])
-    elif hasattr(n, "seen"):
-        n.seen = True
-        n.save(update_fields=["seen"])
-    return JsonResponse({"ok": True})
-
-# -------------------------------------------------------------------
-# Application Form (composite) — Save & Submit
-# -------------------------------------------------------------------
-@login_required
-@transaction.atomic
-def application_form_view(request):
-    # Self-heal: ensure ApplicantProfile exists (created at registration)
-    profile, _ = ApplicantProfile.objects.get_or_create(
-        user=request.user,
-        defaults=dict(
-            full_name=(request.user.get_full_name() or request.user.username),
-            dob=date(2000, 1, 1),
-            gender=ApplicantProfile.Gender.OTHER,
-            highest_education_level=ApplicantProfile.EducationLevel.G12,
-            nid_number=None,
-        ),
-    )
-
-    cycle = _get_active_cycle()
-    if not cycle:
-        messages.error(request, "No active recruitment cycle is currently open.")
+@applicant_required
+def profile_photo_update(request: HttpRequest) -> HttpResponse:
+    profile = get_object_or_404(ApplicantProfile, user=request.user)
+    file = request.FILES.get("photo")
+    if not file:
+        messages.error(request, "Please choose an image to upload.")
         return redirect("recruitment:applicant_dashboard")
+    profile.photo = file
+    profile.save(update_fields=["photo"])
+    messages.success(request, "Profile photo updated.")
+    return redirect("recruitment:applicant_dashboard")
 
-    application, _ = Application.objects.get_or_create(applicant=profile, cycle=cycle)
-    intent = request.POST.get("intent") if request.method == "POST" else None
+@applicant_required
+@require_http_methods(["GET", "POST"])
+def application_form(request: HttpRequest) -> HttpResponse:
+    user = request.user
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        profile = ApplicantProfile.objects.create(
+            user=user,
+            full_name=user.get_full_name() or user.username,
+            gender=ApplicantProfile.Gender.OTHER,
+            dob=date(2000, 1, 1),
+        )
+
+    application = Application.objects.filter(applicant=profile).order_by("-submitted_at", "-id").first()
+    app_instance = application or Application(applicant=profile)
 
     if request.method == "POST":
         profile_form = ApplicantProfileForm(request.POST, request.FILES, instance=profile)
-        application_form = ApplicationForm(request.POST, request.FILES, instance=application)
+        app_form = ApplicationForm(request.POST, instance=app_instance)
 
-        has_alt = any(k.startswith("alt-") for k in request.POST.keys())
-        has_par = any(k.startswith("par-") for k in request.POST.keys())
+        alt_formset = AlternativeContactFormSet(request.POST, instance=app_instance, prefix="alt")
+        education_formset = EducationRecordFormSet(request.POST, instance=app_instance, prefix="edu")
+        work_formset = WorkHistoryFormSet(request.POST, instance=app_instance, prefix="work")
+        reference_formset = ReferenceFormSet(request.POST, instance=app_instance, prefix="ref")
 
-        alt_contact_formset = AlternativeContactFormSet(
-            request.POST if has_alt else None, instance=profile, prefix="alt"
-        )
-        parent_formset = ParentGuardianFormSet(
-            request.POST if has_par else None, instance=profile, prefix="par"
-        )
-
-        education_formset = EducationRecordFormSet(request.POST, instance=profile, prefix="edu")
-        work_formset = WorkFormSet(request.POST, instance=profile, prefix="work")
-        reference_formset = ReferenceFormSet(request.POST, instance=profile, prefix="ref")
-
-        document_rows = []
-        docs_all_valid = True
-        for idx, dtype in enumerate(REQUIRED_DOC_TYPES):
-            existing = Document.objects.filter(applicant=profile, doc_type=dtype).first()
-            prefix = f"doc_{idx}"
-            bound = DocumentUploadForm(request.POST, request.FILES, prefix=prefix, initial={"doc_type": dtype})
-            if intent == "submit" and not (existing and existing.file) and not (bound.files.get(f"{prefix}-file")):
-                bound.add_error("file", "This document is required to submit the application.")
-                docs_all_valid = False
-            document_rows.append({
-                "doc_type": dtype,
-                "doc_type_label": Document.DocType(dtype).label,
-                "form": bound,
-                "existing": existing,
-            })
-
-        all_valid = (
+        valid = (
             profile_form.is_valid()
-            and application_form.is_valid()
-            and (alt_contact_formset.is_valid() if has_alt else True)
-            and (parent_formset.is_valid() if has_par else True)
+            and app_form.is_valid()
+            and alt_formset.is_valid()
             and education_formset.is_valid()
             and work_formset.is_valid()
             and reference_formset.is_valid()
-            and docs_all_valid
-            and all(r["form"].is_valid() for r in document_rows)
         )
 
-        if not all_valid:
-            messages.error(request, "Please fix the errors below.")
-            ctx = {
-                "active_cycle": cycle,
-                "profile_form": profile_form,
-                "application_form": application_form,
-                "alt_contact_formset": alt_contact_formset,
-                "education_formset": education_formset,
-                "work_formset": work_formset,
-                "reference_formset": reference_formset,
-                "document_rows": document_rows,
-            }
-            return render(request, "recruitment/application_form.html", ctx)
+        if not valid:
+            messages.error(request, "Please fix the errors below and try again.")
+        else:
+            profile = profile_form.save()
+            app_obj: Application = app_form.save(commit=False)
+            app_obj.applicant = profile
 
-        profile_form.save()
+            if app_obj.cycle and app_obj.rec_type and app_obj.cycle.rec_type != app_obj.rec_type:
+                app_form.add_error("rec_type", "Recruitment type must match the selected cycle’s type.")
 
-        app = application_form.save(commit=False)
-        app.applicant = profile
-        app.cycle = cycle
-        app.save()
+            intent = request.POST.get("intent", "save")
 
-        if has_alt:
-            alt_contact_formset.save()
-        if has_par:
-            parent_formset.save()
-        education_formset.save()
-        work_formset.save()
-        reference_formset.save()
+            if intent == "submit":
+                if not app_obj.declaration_agreed:
+                    app_form.add_error("declaration_agreed", "You must agree to the declaration to submit.")
+                if not app_obj.signature_name:
+                    app_form.add_error("signature_name", "Signature name is required to submit.")
+                if not app_obj.signature_date:
+                    app_form.add_error("signature_date", "Signature date is required to submit.")
 
-        for row in document_rows:
-            form = row["form"]
-            dtype = row["doc_type"]
-            if form.cleaned_data.get("file"):
-                Document.objects.update_or_create(
-                    applicant=profile, doc_type=dtype, defaults={"file": form.cleaned_data["file"]}
-                )
+            if app_form.errors:
+                pass
+            else:
+                if intent == "submit":
+                    app_obj.status = Application.Status.PENDING
+                    app_obj.submitted_at = timezone.now()
+                app_obj.save()
 
-        if intent == "submit":
-            if not app.submitted_at:
-                app.submitted_at = timezone.now()
-                app.save(update_fields=["submitted_at"])
-            messages.success(request, "Application submitted successfully.")
-            return redirect("recruitment:application_status")
+                alt_formset.instance = app_obj
+                education_formset.instance = app_obj
+                work_formset.instance = app_obj
+                reference_formset.instance = app_obj
 
-        messages.success(request, "Application saved as draft.")
-        return redirect("recruitment:application_form")
+                alt_formset.save()
+                education_formset.save()
+                work_formset.save()
+                reference_formset.save()
 
-    # GET — render unbound forms/sets + existing docs (prefilled via instances)
-    profile_form = ApplicantProfileForm(instance=profile)
-    application_form = ApplicationForm(instance=application)
-    alt_contact_formset = AlternativeContactFormSet(instance=profile, prefix="alt")
-    education_formset = EducationRecordFormSet(instance=profile, prefix="edu")
-    work_formset = WorkFormSet(instance=profile, prefix="work")
-    reference_formset = ReferenceFormSet(instance=profile, prefix="ref")
+                if intent == "submit" and app_obj.cycle_id:
+                    try:
+                        run_automated_eligibility(app_obj)
+                    except Exception:
+                        pass
 
-    document_rows = []
-    for idx, dtype in enumerate(REQUIRED_DOC_TYPES):
-        existing = Document.objects.filter(applicant=profile, doc_type=dtype).first()
-        document_rows.append({
-            "doc_type": dtype,
-            "doc_type_label": Document.DocType(dtype).label,
-            "form": DocumentUploadForm(prefix=f"doc_{idx}", initial={"doc_type": dtype}),
-            "existing": existing,
-        })
+                if intent == "submit":
+                    try:
+                        submitted_when = _as_local(app_obj.submitted_at)
+                        when_str = submitted_when.strftime("%Y-%m-%d %H:%M") if submitted_when else ""
+                    except Exception:
+                        when_str = ""
+                    try:
+                        status_label = app_obj.get_status_display()
+                    except Exception:
+                        status_label = app_obj.status
+                    _notify(
+                        user,
+                        "Application received",
+                        f"Thank you. We've received your application (ID {app_obj.id}). "
+                        f"Status: {status_label}. Submitted on {when_str}.",
+                        ntype="app_receipt",
+                    )
+                    messages.success(request, "Application submitted. You can track the status on the status page.")
+                    return redirect("recruitment:application_status")
+                else:
+                    messages.success(request, "Application saved as draft.")
+                    return redirect("recruitment:application_form")
+    else:
+        profile_form = ApplicantProfileForm(instance=profile)
+        app_form = ApplicationForm(instance=app_instance)
+        alt_formset = AlternativeContactFormSet(instance=app_instance, prefix="alt")
+        education_formset = EducationRecordFormSet(instance=app_instance, prefix="edu")
+        work_formset = WorkHistoryFormSet(instance=app_instance, prefix="work")
+        reference_formset = ReferenceFormSet(instance=app_instance, prefix="ref")
+
+    active_cycle = RecruitmentCycle.objects.filter(is_active=True).order_by("-start_date").first()
 
     ctx = {
-        "active_cycle": cycle,
         "profile_form": profile_form,
-        "application_form": application_form,
-        "alt_contact_formset": alt_contact_formset,
+        "application_form": app_form,
+        "alt_contact_formset": alt_formset,
         "education_formset": education_formset,
         "work_formset": work_formset,
         "reference_formset": reference_formset,
-        "document_rows": document_rows,
+        "active_cycle": active_cycle,
+        "application": application,
+        "document_rows": None,
     }
     return render(request, "recruitment/application_form.html", ctx)
 
-# -------------------------------------------------------------------
-# Application Status (+ timeline, print)
-# -------------------------------------------------------------------
-@login_required
-def application_status_view(request):
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-    app = (
-        Application.objects.filter(applicant=profile)
-        .select_related("cycle")
-        .order_by("-submitted_at", "-id")
-        .first()
-    )
-    if not app:
-        messages.info(request, "You have not created an application yet.")
-        return redirect("recruitment:application_form")
+@applicant_required
+def application_status(request: HttpRequest) -> HttpResponse:
+    profile: Optional[ApplicantProfile] = getattr(request.user, "profile", None)
+    application = Application.objects.filter(applicant=profile).order_by("-submitted_at", "-id").first() if profile else None
+    return render(request, "recruitment/application_status.html", {"application": application})
 
-    actions = []
-    if ScreeningAction:
-        actions = list(
-            ScreeningAction.objects.filter(application=app)
-            .select_related("by_user")
-            .order_by("created_at")
-        )
-    documents = list(Document.objects.filter(applicant=profile).order_by("doc_type"))
+@applicant_required
+def application_status_pdf(request: HttpRequest) -> HttpResponse:
+    return HttpResponse("PDF generation not implemented.", content_type="text/plain")
 
-    ctx = {
-        "profile": profile,
-        "app": app,
-        "cycle": app.cycle,
-        "actions": actions,
-        "documents": documents,
-        "generated_at": timezone.now(),
-    }
-    return render(request, "recruitment/application_status.html", ctx)
+@applicant_required
+def application_status_print(request: HttpRequest) -> HttpResponse:
+    profile: Optional[ApplicantProfile] = getattr(request.user, "profile", None)
+    application = Application.objects.filter(applicant=profile).order_by("-submitted_at", "-id").first() if profile else None
+    return render(request, "recruitment/application_status_print.html", {"application": application})
 
-@login_required
-def application_status_pdf(request):
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-    app = (
-        Application.objects.filter(applicant=profile)
-        .select_related("cycle")
-        .order_by("-submitted_at", "-id")
-        .first()
-    )
-    if not app:
-        messages.info(request, "You have not created an application yet.")
-        return redirect("recruitment:application_form")
+# ------------------------- Notifications ------------------------- #
 
-    actions = []
-    if ScreeningAction:
-        actions = list(
-            ScreeningAction.objects.filter(application=app)
-            .select_related("by_user")
-            .order_by("created_at")
-        )
-    documents = list(Document.objects.filter(applicant=profile).order_by("doc_type"))
+@applicant_required
+def notifications_list(request: HttpRequest) -> HttpResponse:
+    notices = Notification.objects.filter(user=request.user).order_by("-created_at")[:100]
+    return render(request, "recruitment/notifications.html", {"notices": notices})
 
-    ctx = {
-        "profile": profile,
-        "app": app,
-        "cycle": app.cycle,
-        "actions": actions,
-        "documents": documents,
-        "generated_at": timezone.now(),
-    }
+@applicant_required
+@require_http_methods(["POST"])
+def notifications_mark_all_seen(request: HttpRequest) -> HttpResponse:
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return HttpResponse(status=204)
 
-    try:
-        from weasyprint import HTML  # type: ignore
-        html_str = render_to_string("recruitment/application_status_print.html", ctx)
-        pdf = HTML(string=html_str, base_url=request.build_absolute_uri("/")).write_pdf()
-        resp = HttpResponse(pdf, content_type="application/pdf")
-        filename = f"RPNGC_Application_Status_{request.user.username}.pdf"
-        resp["Content-Disposition"] = f'inline; filename="{filename}"'
-        return resp
-    except Exception:
-        return render(request, "recruitment/application_status_print.html", ctx)
+@applicant_required
+@require_http_methods(["POST"])
+def notification_mark_seen(request: HttpRequest, pk: int) -> HttpResponse:
+    Notification.objects.filter(user=request.user, pk=pk).update(is_read=True)
+    return HttpResponse(status=204)
 
-@login_required
-def application_status_print(request):
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-    app = (
-        Application.objects.filter(applicant=profile)
-        .select_related("cycle")
-        .order_by("-submitted_at", "-id")
-        .first()
-    )
-    if not app:
-        messages.info(request, "You have not created an application yet.")
-        return redirect("recruitment:application_form")
+# ------------------------- Simple list pages ------------------------- #
 
-    actions = []
-    if ScreeningAction:
-        actions = list(
-            ScreeningAction.objects.filter(application=app)
-            .select_related("by_user")
-            .order_by("created_at")
-        )
-    documents = list(Document.objects.filter(applicant=profile).order_by("doc_type"))
+@applicant_required
+def interview_schedule_list(request: HttpRequest) -> HttpResponse:
+    profile: Optional[ApplicantProfile] = getattr(request.user, "profile", None)
+    qs = InterviewSchedule.objects.filter(application__applicant=profile).order_by("scheduled_at") if profile else []
+    return render(request, "recruitment/interviews.html", {"schedules": qs})
 
-    ctx = {
-        "profile": profile,
-        "app": app,
-        "cycle": app.cycle,
-        "actions": actions,
-        "documents": documents,
-        "generated_at": timezone.now(),
-        "print_mode": True,
-    }
-    return render(request, "recruitment/application_status_print.html", ctx)
+@applicant_required
+def tests_list(request: HttpRequest) -> HttpResponse:
+    profile: Optional[ApplicantProfile] = getattr(request.user, "profile", None)
+    now = timezone.now()
+    tests_open = []
+    tests_future = []
+    tests_past = []
+    if profile:
+        app = Application.objects.filter(applicant=profile).order_by("-submitted_at", "-id").first()
+        cycle = app.cycle if app else RecruitmentCycle.objects.filter(is_active=True).order_by("-start_date").first()
+        if cycle:
+            qs = Test.objects.filter(cycle=cycle, is_published=True).order_by("-opens_at")
+            tests_open = qs.filter(opens_at__lte=now, closes_at__gte=now)
+            tests_future = qs.filter(opens_at__gt=now)
+            tests_past = qs.filter(closes_at__lt=now)
+    ctx = {"tests_open": tests_open, "tests_future": tests_future, "tests_past": tests_past}
+    return render(request, "recruitment/tests.html", ctx)
 
-# -------------------------------------------------------------------
-# Staff Dashboard (Admin iframe host)
-# -------------------------------------------------------------------
-@login_required
-def staff_dashboard(request):
-    if getattr(request.user, "role", None) not in (User.Roles.OFFICER, User.Roles.ADMIN):
-        return redirect(role_default_url(request.user))
-    return render(request, "recruitment/staff_dashboard.html")
+@applicant_required
+def cycles_list(request: HttpRequest) -> HttpResponse:
+    qs = RecruitmentCycle.objects.order_by("-intake_year", "-start_date")
+    return render(request, "recruitment/cycles.html", {"cycles": qs})
 
-@login_required
-def interview_schedule_list(request):
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-    app = (
-        Application.objects.filter(applicant=profile)
-        .select_related("cycle")
-        .order_by("-submitted_at", "-id")
-        .first()
-    )
-    items = []
-    if app:
-        try:
-            from .models import InterviewSchedule  # optional safety
-            items = (InterviewSchedule.objects
-                     .filter(application=app)
-                     .select_related("application")
-                     .order_by("-scheduled_at"))
-        except Exception:
-            items = []
-    return render(request, "recruitment/interview_list.html", {
-        "app": app,
-        "items": items,
-        "generated_at": timezone.now(),
-    })
+@applicant_required
+def eligibility_list(request: HttpRequest) -> HttpResponse:
+    profile: Optional[ApplicantProfile] = getattr(request.user, "profile", None)
+    application = Application.objects.filter(applicant=profile).order_by("-submitted_at", "-id").first() if profile else None
+    eligibility: Optional[ApplicationEligibility] = getattr(application, "eligibility", None) if application else None
+    return render(request, "recruitment/eligibility.html", {"application": application, "eligibility": eligibility})
 
+# ------------------------- Staff quick redirect ------------------------- #
 
-@login_required
-def tests_list(request):
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-    cycle = _get_active_cycle()
-    tests = []
-    attempts_by_test = {}
-    if cycle:
-        try:
-            from .models import Test, TestAttempt
-            tests = (Test.objects
-                     .filter(cycle=cycle, is_published=True)
-                     .order_by("opens_at", "name"))
-            attempts = (TestAttempt.objects
-                        .filter(application__applicant=profile, application__cycle=cycle)
-                        .select_related("test", "application"))
-            attempts_by_test = {a.test_id: a for a in attempts}
-        except Exception:
-            tests = []
-    return render(request, "recruitment/tests_list.html", {
-        "cycle": cycle,
-        "tests": tests,
-        "attempts_by_test": attempts_by_test,
-        "generated_at": timezone.now(),
-    })
+@staff_member_required(login_url="recruitment:login")
+def staff_dashboard(request: HttpRequest) -> HttpResponse:
+    """Target for {% url 'recruitment:staff_dashboard' %} — always bounce to custom admin."""
+    return redirect("/admin_site/")
 
-
-@login_required
-def cycles_list(request):
-    try:
-        cycles = RecruitmentCycle.objects.all().order_by("-is_active", "-start_date")
-    except Exception:
-        cycles = []
-    return render(request, "recruitment/cycles_list.html", {
-        "cycles": cycles,
-        "generated_at": timezone.now(),
-    })
-
-
-@login_required
-def eligibility_list(request):
-    profile = get_object_or_404(ApplicantProfile, user=request.user)
-    app = (
-        Application.objects.filter(applicant=profile)
-        .select_related("cycle")
-        .order_by("-submitted_at", "-id")
-        .first()
-    )
-    rows = []
-    if app:
-        try:
-            from .models import ApplicationEligibility
-            rows = (ApplicationEligibility.objects
-                    .filter(application=app)
-                    .order_by("-run_at"))
-        except Exception:
-            rows = []
-    return render(request, "recruitment/eligibility_list.html", {
-        "app": app,
-        "rows": rows,
-        "generated_at": timezone.now(),
-    })
+# Alias for legacy URL wiring
+def register_view(request: HttpRequest) -> HttpResponse:
+    return register(request)
